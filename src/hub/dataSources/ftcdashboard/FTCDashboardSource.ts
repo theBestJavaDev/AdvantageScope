@@ -13,6 +13,9 @@ import LiveDataTuner from "../LiveDataTuner";
 import configReducer, { initialState } from "./configReducer";
 import { BasicVarType, ConfigState, ConfigVar, ConfigVarState, SaveConfigAction } from "./configTypes";
 
+/** Log key for telemetry.addLine() text, newline-separated. */
+export const TELEMETRY_LINES_KEY = "/_Telemetry/Lines";
+
 export default class FTCDashboardSource extends LiveDataSource implements LiveDataTuner {
   private FTCDASHBOARD_PORT = 8000;
   private FTCDASHBOARD_PING_TIMEOUT_MS = 1000; // How often to ping
@@ -108,6 +111,10 @@ export default class FTCDashboardSource extends LiveDataSource implements LiveDa
               this.log.putBoolean("RUNNING", timestamp, this.running);
             }
             this.logObject(packet.data, timestamp);
+          }
+          // telemetry.addLine() text (Driver Station-style free lines); shown by the Telemetry tab
+          if (Array.isArray(packet.log) && packet.log.length > 0) {
+            this.log.putString(TELEMETRY_LINES_KEY, timestamp, packet.log.join("\n"));
           }
         }
       }

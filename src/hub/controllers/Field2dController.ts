@@ -129,7 +129,7 @@ export default class Field2dController implements TabController {
 
   /** Selects the default field based on whether the user prefers FTC. */
   private selectDefaultField() {
-    let prefersFTC = window.preferences?.prefersFTC ?? false;
+    let prefersFTC = window.preferences?.prefersFTC ?? true; // SolversScope is FTC-first
     let primaryGroup = prefersFTC
       ? (this.FIELD_SELECT.lastElementChild as HTMLElement)
       : (this.FIELD_SELECT.firstElementChild as HTMLElement);
@@ -138,9 +138,9 @@ export default class Field2dController implements TabController {
       : (this.FIELD_SELECT.lastElementChild as HTMLElement);
 
     if (primaryGroup.children.length > 0) {
-      this.FIELD_SELECT.value = (primaryGroup.children[0] as HTMLOptionElement).value;
+      this.FIELD_SELECT.value = newestSeasonOption(primaryGroup).value;
     } else if (secondaryGroup.children.length > 0) {
-      this.FIELD_SELECT.value = (secondaryGroup.children[0] as HTMLOptionElement).value;
+      this.FIELD_SELECT.value = newestSeasonOption(secondaryGroup).value;
     } else {
       this.FIELD_SELECT.selectedIndex = 0;
     }
@@ -492,4 +492,18 @@ export default class Field2dController implements TabController {
       objects: objects
     };
   }
+}
+
+/**
+ * SolversScope: default to the current season's field (e.g. "Field2d_20262027FTCFieldV1" for
+ * BIOBUZZ) rather than the generic Evergreen field. Picks the option whose id/name has the latest
+ * season year; falls back to the first option.
+ */
+function newestSeasonOption(group: HTMLElement): HTMLOptionElement {
+  const options = Array.from(group.children) as HTMLOptionElement[];
+  const season = (o: HTMLOptionElement) => {
+    const match = /(20\d{2})[^0-9]?(20\d{2})?/.exec(o.value + " " + o.innerText);
+    return match ? Number(match[1]) : -1;
+  };
+  return options.reduce((best, o) => (season(o) > season(best) ? o : best), options[0]);
 }

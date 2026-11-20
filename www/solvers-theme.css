@@ -1,0 +1,1161 @@
+/*
+  Copyright (c) 2021-2026 Littleton Robotics & FTC Team 23511 Seattle Solvers
+  http://github.com/Mechanical-Advantage
+
+  Use of this source code is governed by a BSD
+  license that can be found in the LICENSE file
+  at the root directory of this project.
+*/
+
+/*
+  SolversScope theme layer: Seattle Solvers branding.
+
+  Matches seattlesolvers.com: Solvers gold (#f2ce00) on warm near-black (#0b0a06) and cream
+  (#fcf9de), square corners, Orbitron headings, Inter body text and Azeret Mono uppercase labels
+  and buttons (values taken from the site's own CSS tokens: --gold, --paper, --ink, --line ...).
+
+  Loaded after global.css / hub.css / renderers.css. It changes colors, type and surfaces (not
+  layout), so upstream AdvantageScope CSS can still be merged. Canvas/WebGL renderers read the same
+  tokens through src/shared/themeColors.ts.
+*/
+
+@font-face {
+  font-family: "Orbitron Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 900;
+  src: url("fonts/orbitron-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("fonts/inter-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Azeret Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/azeret-mono-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Azeret Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/azeret-mono-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Azeret Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("fonts/azeret-mono-600.woff2") format("woff2");
+}
+
+:root {
+  /* Type (the website's stacks) */
+  --ss-font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --ss-font-display: "Orbitron Variable", "Orbitron", sans-serif;
+  --ss-font-mono: "Azeret Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  /* Light = the site's .ground-light */
+  --ss-window: #f3eed3;
+  --ss-sidebar: #f3eed3;
+  --ss-bg: #fcf9de;
+  --ss-surface: #f8f4d8;
+  --ss-surface-2: #efe9ca;
+  --ss-surface-3: #e4ddb9;
+  --ss-border: #0b0a0624;
+  --ss-border-strong: #0b0a0652;
+  --ss-text: #0b0a06;
+  --ss-text-dim: #625d47;
+  --ss-accent: #f2ce00;
+  --ss-accent-hover: #ffe75c;
+  --ss-accent-soft: rgba(242, 206, 0, 0.22);
+  --ss-accent-text: #0b0a06;
+  /* Gold that reads on cream (text, outlines, plot lines) */
+  --ss-accent-ink: #6f5b00;
+  --ss-accent-line: #b99d00;
+  --ss-good: #1a9e55;
+  --ss-bad: #d63a3a;
+  --ss-warn: #e07800;
+  --ss-input: #fffdeb;
+  --ss-shadow: none;
+  --ss-radius: 0px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark = the site's default ground */
+    --ss-window: #0b0a06;
+    --ss-sidebar: #0b0a06;
+    --ss-bg: #14130c;
+    --ss-surface: #1d1b10;
+    --ss-surface-2: #262315;
+    --ss-surface-3: #302c1b;
+    --ss-border: #fcf9de21;
+    --ss-border-strong: #fcf9de4d;
+    --ss-text: #fcf9de;
+    --ss-text-dim: #a69f7c;
+    --ss-accent: #f2ce00;
+    --ss-accent-hover: #ffe75c;
+    --ss-accent-soft: rgba(242, 206, 0, 0.14);
+    --ss-accent-text: #0b0a06;
+    --ss-accent-ink: #ffe75c;
+    --ss-accent-line: #f2ce00;
+    --ss-good: #3ddc84;
+    --ss-bad: #ff5c5c;
+    --ss-warn: #ff9f1c;
+    --ss-input: #0b0a06;
+    --ss-shadow: none;
+    --ss-radius: 0px;
+    color-scheme: dark;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Type
+   --------------------------------------------------------------------------------------------- */
+
+body {
+  font-family: var(--ss-font-body);
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Window, sidebar, main viewer
+   --------------------------------------------------------------------------------------------- */
+
+html,
+body {
+  background-color: var(--ss-window);
+  color: var(--ss-text);
+}
+
+div.side-bar-background,
+body.fancy-side-bar-win div.side-bar-background {
+  background-color: var(--ss-sidebar);
+  opacity: 1 !important;
+}
+
+div.viewer-background {
+  background-color: var(--ss-bg);
+  box-shadow: -1px 0 0 0 var(--ss-border);
+}
+
+div.title-bar-text {
+  color: var(--ss-text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+div.title-bar-menu button {
+  color: var(--ss-text-dim);
+  border-radius: 6px;
+}
+
+div.title-bar-menu button:hover {
+  color: var(--ss-text);
+  background-color: var(--ss-surface-3);
+}
+
+div.title-bar-menu button:active {
+  background-color: var(--ss-border-strong);
+}
+
+input.side-bar-search {
+  color: var(--ss-text);
+  background-color: var(--ss-input);
+  border: 1px solid var(--ss-border);
+  border-radius: var(--ss-radius);
+}
+
+input.side-bar-search:focus {
+  border-color: var(--ss-accent);
+  box-shadow: 0 0 0 3px var(--ss-accent-soft);
+}
+
+input.side-bar-search::placeholder {
+  color: var(--ss-text-dim);
+}
+
+div.search-results {
+  background-color: var(--ss-surface);
+  border: 1px solid var(--ss-border);
+  border-radius: var(--ss-radius);
+  box-shadow: var(--ss-shadow);
+}
+
+div.search-results-item:nth-child(even) {
+  background-color: var(--ss-surface-2);
+}
+
+div.search-results-item.hovered {
+  background-color: var(--ss-accent-soft);
+}
+
+div.loading-glow {
+  background-color: var(--ss-accent);
+}
+
+div.tab-bar-drag-highlight,
+div.source-list div.drag-highlight {
+  background-color: var(--ss-accent-soft);
+  outline: 2px dashed var(--ss-accent);
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Tab bar: one rounded segmented control, selected tab in the accent color
+   --------------------------------------------------------------------------------------------- */
+
+div.tab {
+  color: var(--ss-text-dim);
+  background-color: var(--ss-surface-2);
+  border: 1px solid var(--ss-border);
+  border-left-width: 0;
+}
+
+div.tab:first-child {
+  border-left-width: 1px;
+}
+
+div.tab.tab-hovered {
+  color: var(--ss-text);
+  background-color: var(--ss-surface-3);
+}
+
+div.tab.tab-selected {
+  color: var(--ss-accent);
+  font-weight: 600;
+  background-color: var(--ss-accent-soft);
+  border: 1px solid var(--ss-accent);
+}
+
+div.tab.tab-selected + div.tab {
+  border-left-width: 0;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Timeline + tab controls pane
+   --------------------------------------------------------------------------------------------- */
+
+canvas.timeline-canvas {
+  background-color: var(--ss-surface-2);
+  border: 1px solid var(--ss-border);
+}
+
+div.controls-content {
+  background-color: var(--ss-surface);
+  box-shadow: 0 -1px 0 0 var(--ss-border);
+}
+
+div.setting-blocks div.split div {
+  background-color: var(--ss-surface-2);
+  border-color: var(--ss-border);
+}
+
+div.setting-blocks div.split div:hover {
+  background-color: var(--ss-surface-3);
+}
+
+div.setting-blocks div.split div.selected {
+  background-color: var(--ss-accent-soft);
+  border-color: var(--ss-accent);
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Form controls everywhere in the app (native ones were white in dark mode)
+   --------------------------------------------------------------------------------------------- */
+
+select,
+input[type="number"],
+input[type="text"]:not(.side-bar-search),
+input[type="search"]:not(.side-bar-search),
+textarea {
+  color: var(--ss-text);
+  background-color: var(--ss-input);
+  border: 1px solid var(--ss-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+select:focus,
+input[type="number"]:focus,
+input[type="text"]:not(.side-bar-search):focus,
+input[type="search"]:not(.side-bar-search):focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--ss-accent);
+  box-shadow: 0 0 0 3px var(--ss-accent-soft);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--ss-accent);
+}
+
+/* Field value editor (live tuning) keeps its highlight, themed */
+div.field-value input {
+  color: var(--ss-text);
+  background-color: var(--ss-input);
+}
+
+div.field-value input:focus {
+  background-color: var(--ss-accent-soft);
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Scrollbars
+   --------------------------------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--ss-border-strong);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ss-text-dim);
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Simulation tabs (Shot Lab / Drive Sim) on the shared tokens
+   --------------------------------------------------------------------------------------------- */
+
+div.shotlab-form {
+  background-color: var(--ss-surface);
+  border-right: 1px solid var(--ss-border) !important;
+}
+
+div.shotlab-actions {
+  background-color: var(--ss-surface) !important;
+}
+
+div.shotlab-actions button {
+  color: var(--ss-text) !important;
+  background-color: var(--ss-surface-2) !important;
+  border: 1px solid var(--ss-border) !important;
+  border-radius: 6px;
+}
+
+div.shotlab-actions button:not(:disabled):hover {
+  background-color: var(--ss-surface-3) !important;
+}
+
+div.shotlab-actions button.primary {
+  color: var(--ss-accent-text) !important;
+  background-color: var(--ss-accent) !important;
+  border-color: var(--ss-accent) !important;
+}
+
+div.shotlab-actions button.primary:not(:disabled):hover {
+  background-color: var(--ss-accent-hover) !important;
+}
+
+div.shotlab-actions button.recording {
+  color: #fff !important;
+  background-color: var(--ss-bad) !important;
+  border-color: var(--ss-bad) !important;
+}
+
+div.shotlab-form summary {
+  color: var(--ss-text);
+}
+
+label.shotlab-row span.unit,
+div.shotlab-note {
+  color: var(--ss-text-dim);
+  opacity: 1;
+}
+
+div.shotlab-card {
+  background-color: var(--ss-surface);
+  border-color: var(--ss-border);
+  box-shadow: var(--ss-shadow);
+}
+
+div.shotlab-card.good {
+  border-left-color: var(--ss-good);
+}
+
+div.shotlab-card.bad {
+  border-left-color: var(--ss-bad);
+}
+
+div.shotlab-card div.label,
+div.shotlab-card div.detail {
+  color: var(--ss-text-dim);
+  opacity: 1;
+}
+
+div.shotlab-status {
+  border: 1px solid var(--ss-border);
+}
+
+div.shotlab-plots canvas {
+  background-color: var(--ss-surface);
+  border-color: var(--ss-border);
+}
+
+table.shotlab-budget th {
+  color: var(--ss-text-dim);
+  border-bottom-color: var(--ss-border-strong) !important;
+}
+
+table.shotlab-budget td {
+  border-bottom-color: var(--ss-border);
+}
+
+div.shotlab-bar > div {
+  background-color: var(--ss-accent) !important;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Telemetry tab
+   --------------------------------------------------------------------------------------------- */
+
+div.telemetry {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--ss-text);
+  background-color: var(--ss-bg);
+}
+
+div.telemetry-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ss-border);
+  background-color: var(--ss-surface);
+  font-size: 13px;
+  color: var(--ss-text-dim);
+}
+
+div.telemetry-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+div.telemetry-toolbar input.telemetry-filter {
+  flex: 1 1 160px;
+  max-width: 280px;
+  padding: 4px 8px;
+}
+
+div.telemetry.satellite div.telemetry-toolbar {
+  display: none;
+}
+
+div.telemetry-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  overflow: hidden;
+}
+
+div.telemetry-body[hidden] {
+  display: none;
+}
+
+/* Driver Station panel */
+
+div.ds-panel {
+  flex: 0 0 340px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--ss-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--ss-surface);
+  box-shadow: var(--ss-shadow);
+}
+
+div.ds-header {
+  padding: 12px 14px 10px 14px;
+  border-bottom: 1px solid var(--ss-border);
+  background-color: var(--ss-surface-2);
+}
+
+div.ds-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ss-text-dim);
+  margin-bottom: 6px;
+}
+
+div.ds-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+div.ds-row.dim {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ss-text-dim);
+}
+
+div.ds-opmode {
+  font-size: 17px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+div.ds-state {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 9px;
+  border-radius: 10px;
+  color: var(--ss-text-dim);
+  border: 1px solid var(--ss-border-strong);
+}
+
+div.ds-state.running {
+  color: #fff;
+  background-color: var(--ss-good);
+  border-color: var(--ss-good);
+}
+
+div.ds-state.init {
+  color: #fff;
+  background-color: var(--ss-warn);
+  border-color: var(--ss-warn);
+}
+
+div.ds-state.sim {
+  color: var(--ss-accent);
+  border-color: var(--ss-accent);
+  background-color: var(--ss-accent-soft);
+}
+
+div.ds-battery.low {
+  color: var(--ss-bad);
+  font-weight: 600;
+}
+
+div.ds-alert {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--ss-border);
+}
+
+div.ds-alert.error {
+  color: #fff;
+  background-color: var(--ss-bad);
+}
+
+div.ds-alert.warning {
+  color: #1b1f24;
+  background-color: var(--ss-warn);
+}
+
+div.ds-lines {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 6px 0;
+  font-family: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  user-select: text;
+}
+
+div.ds-line {
+  display: flex;
+  gap: 10px;
+  padding: 3px 14px;
+  line-height: 1.35;
+}
+
+div.ds-line:nth-child(even) {
+  background-color: var(--ss-surface-2);
+}
+
+div.ds-line span.ds-key {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ss-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+div.ds-line span.ds-key::after {
+  content: " :";
+}
+
+div.ds-line span.ds-value {
+  flex: 0 1 auto;
+  max-width: 60%;
+  text-align: right;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+div.ds-line.boolean span.ds-value {
+  color: var(--ss-accent);
+}
+
+div.ds-line.free {
+  display: block;
+  white-space: pre-wrap;
+}
+
+div.ds-line.dim {
+  color: var(--ss-text-dim);
+  font-style: italic;
+}
+
+/* Metric cards */
+
+div.telemetry-grid {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-auto-rows: min-content;
+  gap: 10px;
+  align-content: start;
+}
+
+div.telemetry-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--ss-border);
+  border-radius: 10px;
+  background-color: var(--ss-surface);
+  box-shadow: var(--ss-shadow);
+  min-width: 0;
+}
+
+div.telemetry-card div.label {
+  font-size: 12px;
+  color: var(--ss-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+div.telemetry-card div.value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+div.telemetry-card.boolean div.value {
+  align-self: flex-start;
+  margin: 4px 0;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: 10px;
+}
+
+div.telemetry-card.boolean div.value.true {
+  color: #fff;
+  background-color: var(--ss-good);
+}
+
+div.telemetry-card.boolean div.value.false {
+  color: var(--ss-text-dim);
+  background-color: var(--ss-surface-3);
+}
+
+div.telemetry-card canvas.spark {
+  width: 100%;
+  height: 42px;
+  margin: 4px 0 2px 0;
+}
+
+div.telemetry-card div.stats {
+  font-size: 11px;
+  color: var(--ss-text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+div.telemetry-empty {
+  color: var(--ss-text-dim);
+  max-width: 460px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  div.telemetry-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  div.ds-panel {
+    flex: 0 0 auto;
+    max-height: 45%;
+  }
+}
+
+div.shotlab-actions button.wide {
+  grid-column: 1 / -1;
+}
+
+div.shotlab-actions.shotlab-section-actions {
+  position: static;
+  margin: 8px 0 4px 8px;
+  padding: 0;
+  background-color: transparent !important;
+}
+
+/* =============================================================================================
+   Seattle Solvers look (seattlesolvers.com): square corners, gold band buttons, mono labels
+   ============================================================================================= */
+
+/* Title bar: logo + Orbitron wordmark */
+div.title-bar-text {
+  font-family: var(--ss-font-display);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+div.title-bar-text::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 24px;
+  background: url("symbols/solvers-logo.svg") center / contain no-repeat;
+  filter: drop-shadow(0 0 6px rgba(242, 206, 0, 0.45));
+}
+
+div.title-bar-menu button {
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+/* Tab bar: mono uppercase, gold band on the selected tab */
+div.tab {
+  font-family: var(--ss-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+div.tab:first-child,
+div.tab:last-child {
+  border-radius: 0;
+}
+
+div.tab.tab-selected {
+  color: var(--ss-accent-text);
+  font-weight: 600;
+  background-color: var(--ss-accent);
+  border-color: var(--ss-accent);
+}
+
+div.tab.tab-selected.tab-hovered {
+  background-color: var(--ss-accent-hover);
+}
+
+canvas.timeline-canvas,
+input.side-bar-search,
+div.search-results,
+select,
+input[type="number"],
+input[type="text"]:not(.side-bar-search),
+input[type="search"]:not(.side-bar-search),
+textarea {
+  border-radius: 0;
+}
+
+input.side-bar-search::placeholder,
+input.telemetry-filter::placeholder {
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Buttons: the site's .btn (mono, uppercase, tracked) - gold band for primary */
+div.shotlab-actions button,
+div.telemetry-toolbar button {
+  font-family: var(--ss-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 0 !important;
+  color: var(--ss-text) !important;
+  background-color: transparent !important;
+  border: 1px solid var(--ss-border-strong) !important;
+  transition:
+    background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+div.shotlab-actions button:not(:disabled):hover,
+div.telemetry-toolbar button:not(:disabled):hover {
+  color: var(--ss-accent-text) !important;
+  background-color: var(--ss-accent) !important;
+  border-color: var(--ss-accent) !important;
+}
+
+div.shotlab-actions button:not(:disabled):active,
+div.telemetry-toolbar button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+div.shotlab-actions button.primary,
+div.telemetry-toolbar button.telemetry-download {
+  color: var(--ss-accent-text) !important;
+  background-color: var(--ss-accent) !important;
+  border-color: var(--ss-accent) !important;
+}
+
+div.shotlab-actions button.primary:not(:disabled):hover,
+div.telemetry-toolbar button.telemetry-download:not(:disabled):hover {
+  background-color: var(--ss-accent-hover) !important;
+  border-color: var(--ss-accent-hover) !important;
+}
+
+div.shotlab-actions button.recording,
+div.telemetry-toolbar button.recording {
+  color: #fff !important;
+  background-color: var(--ss-bad) !important;
+  border-color: var(--ss-bad) !important;
+}
+
+div.telemetry-toolbar button {
+  height: 30px;
+  padding: 0 12px;
+}
+
+div.telemetry-spacer {
+  flex: 1 1 auto;
+}
+
+span.telemetry-spacer {
+  flex: 1 1 auto;
+}
+
+span.telemetry-rec-status {
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ss-text-dim);
+}
+
+/* Section headings and small labels: the site's .mono */
+div.shotlab-form summary,
+div.telemetry-toolbar label,
+div.ds-title,
+div.shotlab-card div.label,
+div.telemetry-card div.label,
+table.shotlab-budget th,
+div.shotlab-plots + div table th {
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+div.shotlab-form summary {
+  color: var(--ss-text);
+  padding: 8px 0 6px 0;
+  border-bottom: 1px solid var(--ss-border);
+  margin-bottom: 4px;
+}
+
+/* Big numbers and names: Orbitron, like the site's headings and stat numerals */
+div.shotlab-card div.value,
+div.telemetry-card div.value,
+div.ds-opmode {
+  font-family: var(--ss-font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+div.telemetry-card.boolean div.value {
+  font-family: var(--ss-font-mono);
+}
+
+/* Cards and panels: flat, square, hairline borders (no shadows) */
+div.shotlab-card,
+div.telemetry-card,
+div.ds-panel,
+div.shotlab-status,
+div.shotlab-plots canvas,
+div.drivesim-focus-hint {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+div.shotlab-card.good,
+div.telemetry-card:hover {
+  border-left-color: var(--ss-good);
+}
+
+div.telemetry-card:hover {
+  border-color: var(--ss-accent-line);
+}
+
+div.ds-state,
+div.telemetry-card.boolean div.value {
+  border-radius: 0;
+  font-family: var(--ss-font-mono);
+}
+
+div.ds-state.sim {
+  color: var(--ss-accent-text);
+  background-color: var(--ss-accent);
+  border-color: var(--ss-accent);
+}
+
+div.ds-line.boolean span.ds-value {
+  color: var(--ss-accent-ink);
+}
+
+div.ds-lines {
+  font-family: var(--ss-font-mono);
+}
+
+div.shotlab-bar,
+div.shotlab-bar > div {
+  border-radius: 0;
+}
+
+div.shotlab-bar > div {
+  background-color: var(--ss-accent-line) !important;
+}
+
+/* Checkboxes and focus in Solvers gold */
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--ss-accent);
+}
+
+select:focus,
+input[type="number"]:focus,
+input[type="text"]:not(.side-bar-search):focus,
+input[type="search"]:focus,
+textarea:focus,
+input.side-bar-search:focus {
+  border-color: var(--ss-accent-line);
+  box-shadow: 0 0 0 2px var(--ss-accent-soft);
+}
+
+:focus-visible:not(input) {
+  outline-color: var(--ss-accent);
+}
+
+div.loading-glow {
+  background-color: var(--ss-accent);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 0;
+}
+
+/* Readability fixes for the branded type */
+div.title-bar-text {
+  /* The title holds the log's path: keep it readable, brand it with the logo */
+  font-family: var(--ss-font-body);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+}
+
+div.shotlab-card div.value {
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+div.telemetry-card div.value {
+  font-size: 20px;
+}
+
+div.ds-line span.ds-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+div.ds-line.string span.ds-value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Auto Check tab
+   --------------------------------------------------------------------------------------------- */
+
+div.autocheck {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--ss-text);
+  background-color: var(--ss-bg);
+}
+
+div.autocheck.satellite div.autocheck-toolbar {
+  display: none;
+}
+
+div.autocheck-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+div.autocheck-empty {
+  color: var(--ss-text-dim);
+  font-style: italic;
+}
+
+div.autocheck-dist {
+  border: 1px solid var(--ss-border);
+  background-color: var(--ss-surface);
+  padding: 10px 12px 6px 12px;
+}
+
+div.autocheck-dist:empty {
+  display: none;
+}
+
+div.autocheck-dist-title,
+div.autocheck-errors {
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ss-text-dim);
+}
+
+div.autocheck-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 110px;
+  margin-top: 8px;
+}
+
+div.autocheck-bar {
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  min-width: 10px;
+}
+
+div.autocheck-bar div.fill {
+  background-color: var(--ss-border-strong);
+  min-height: 1px;
+}
+
+div.autocheck-bar div.fill.in-range {
+  background-color: var(--ss-accent);
+}
+
+div.autocheck-bar div.k {
+  font-family: var(--ss-font-mono);
+  font-size: 10px;
+  text-align: center;
+  color: var(--ss-text-dim);
+  margin-top: 3px;
+}
+
+table.autocheck-shots {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+table.autocheck-shots th {
+  text-align: left;
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ss-text-dim);
+  padding: 6px;
+  border-bottom: 1px solid var(--ss-border-strong);
+}
+
+table.autocheck-shots td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--ss-border);
+  white-space: nowrap;
+}
+
+table.autocheck-shots td.in {
+  color: var(--ss-good);
+  font-family: var(--ss-font-mono);
+  font-weight: 600;
+}
+
+table.autocheck-shots td.miss {
+  color: var(--ss-bad);
+  font-family: var(--ss-font-mono);
+  font-weight: 600;
+}
+
+table.autocheck-shots div.shotlab-bar {
+  width: 80px;
+}

@@ -10,8 +10,10 @@ import NamedMessage from "./shared/NamedMessage";
 import Preferences from "./shared/Preferences";
 import Selection, { SelectionMode } from "./shared/Selection";
 import TabType, { getTabIcon } from "./shared/TabType";
+import AutoCheckRenderer from "./shared/renderers/AutoCheckRenderer";
 import ConsoleRenderer from "./shared/renderers/ConsoleRenderer";
 import DocumentationRenderer from "./shared/renderers/DocumentationRenderer";
+import DriveSimRenderer from "./shared/renderers/DriveSimRenderer";
 import Field2dRenderer from "./shared/renderers/Field2dRenderer";
 import Field3dRenderer from "./shared/renderers/Field3dRenderer";
 import JoysticksRenderer from "./shared/renderers/JoysticksRenderer";
@@ -19,10 +21,12 @@ import LineGraphRenderer from "./shared/renderers/LineGraphRenderer";
 import MechanismRenderer from "./shared/renderers/MechanismRenderer";
 import MetadataRenderer from "./shared/renderers/MetadataRenderer";
 import PointsRenderer from "./shared/renderers/PointsRenderer";
+import ShotLabRenderer from "./shared/renderers/ShotLabRenderer";
 import StatisticsRenderer from "./shared/renderers/StatisticsRenderer";
 import SwerveRenderer from "./shared/renderers/SwerveRenderer";
 import TabRenderer from "./shared/renderers/TabRenderer";
 import TableRenderer from "./shared/renderers/TableRenderer";
+import TelemetryRenderer from "./shared/renderers/TelemetryRenderer";
 import VideoRenderer from "./shared/renderers/VideoRenderer";
 import { htmlEncode } from "./shared/util";
 
@@ -101,6 +105,18 @@ function updateVisualizer() {
       break;
     case TabType.Metadata:
       renderer = new MetadataRenderer(root);
+      break;
+    case TabType.ShotLab:
+      renderer = new ShotLabRenderer(root);
+      break;
+    case TabType.DriveSim:
+      renderer = new DriveSimRenderer(root);
+      break;
+    case TabType.Telemetry:
+      renderer = new TelemetryRenderer(root);
+      break;
+    case TabType.AutoCheck:
+      renderer = new AutoCheckRenderer(root);
       break;
   }
 }

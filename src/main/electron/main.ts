@@ -1378,6 +1378,31 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
       select2DCameraPopup(window, message.data.position, message.data.selectedIndex);
       break;
 
+    case "export-telemetry-report":
+      // SolversScope: Telemetry tab's Markdown report ({ fileName, content })
+      dialog
+        .showSaveDialog(window, {
+          title: "Save telemetry report",
+          defaultPath: message.data.fileName,
+          properties: ["createDirectory", "showOverwriteConfirmation"],
+          filters: [{ name: "Markdown", extensions: ["md"] }]
+        })
+        .then((response) => {
+          if (!response.canceled && response.filePath) {
+            fs.writeFile(response.filePath, message.data.content, (err) => {
+              if (err) {
+                dialog.showMessageBox(window, {
+                  type: "error",
+                  title: "Error",
+                  message: "Could not save the telemetry report",
+                  detail: err.message
+                });
+              }
+            });
+          }
+        });
+      break;
+
     case "export-console":
       dialog
         .showSaveDialog(window, {
@@ -2109,7 +2134,7 @@ function setupMenu() {
       label: isMac ? "" : "App",
       submenu: [
         {
-          label: "About AdvantageScope",
+          label: "About SolversScope",
           click() {
             createAboutWindow();
           }
@@ -2779,7 +2804,7 @@ function setupMenu() {
   });
 }
 
-/** Creates the "About AdvantageScope" window. */
+/** Creates the "About SolversScope" window. */
 function createAboutWindow() {
   let detailLines: string[] = [];
   detailLines.push("Version: " + (app.isPackaged ? app.getVersion() : "Development"));
@@ -2794,7 +2819,7 @@ function createAboutWindow() {
     .showMessageBox({
       type: "info",
       title: "About",
-      message: "AdvantageScope",
+      message: "SolversScope",
       detail: COPYRIGHT + "\n\n" + detail,
       buttons: ["Close", process.platform === "win32" ? "Copy and Close" : "Copy & Close"],
       defaultId: 0,
@@ -2846,12 +2871,9 @@ function createHubWindow(state?: WindowState, layoutOverride?: any) {
       prefs.titleBarStyle = "hiddenInset";
       break;
     case "win32":
-      let releaseSplit = os.release().split(".");
-      if (Number(releaseSplit[releaseSplit.length - 1]) >= 22621) {
-        // Windows 11 22H2
-        prefs.backgroundMaterial = "acrylic";
-      }
-
+      // SolversScope uses a solid themed background instead of acrylic: the half-transparent
+      // sidebar over acrylic showed whatever was behind the window and turned the sidebar gray.
+      prefs.backgroundColor = nativeTheme.shouldUseDarkColors ? "#0b0a06" : "#f3eed3"; // Seattle Solvers paper
       prefs.titleBarStyle = "hidden";
       let overlayOptions: TitleBarOverlay = {
         color: "#00000000",

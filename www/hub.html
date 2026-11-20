@@ -23,13 +23,14 @@
     <link rel="stylesheet" href="global.css" />
     <link rel="stylesheet" href="hub.css" />
     <link rel="stylesheet" href="renderers.css" />
+    <link rel="stylesheet" href="solvers-theme.css" />
     <script type="module" src="../bundles/hub.js"></script>
-    <title>AdvantageScope</title>
+    <title>SolversScope</title>
   </head>
 
   <body>
     <div class="title-bar" hidden>
-      <div class="title-bar-text">AdvantageScope</div>
+      <div class="title-bar-text">SolversScope</div>
     </div>
     <div class="title-bar-menu">
       <table>
@@ -485,6 +486,18 @@
 
       <!-- Metadata -->
       <div id="controller12"></div>
+
+      <!-- Shot Lab -->
+      <div id="controller13"></div>
+
+      <!-- Drive Sim -->
+      <div id="controller14"></div>
+
+      <!-- Telemetry -->
+      <div id="controller15"></div>
+
+      <!-- Auto Check -->
+      <div id="controller16"></div>
     </span>
 
     <span id="rendererTemplates" hidden>
@@ -680,6 +693,140 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Shot Lab -->
+      <div id="renderer13">
+        <div class="shotlab">
+          <div class="shotlab-form"></div>
+          <div class="shotlab-results">
+            <div class="shotlab-status info"></div>
+            <div class="shotlab-empty">Results appear here after a run.</div>
+            <div class="shotlab-cards"></div>
+            <div class="shotlab-plots">
+              <canvas class="shotlab-side"></canvas>
+              <canvas class="shotlab-top"></canvas>
+            </div>
+            <div class="shotlab-budget-container" hidden>
+              <table class="shotlab-budget">
+                <tbody>
+                  <tr>
+                    <th>Error budget (each source alone)</th>
+                    <th>Hit rate</th>
+                    <th>Hit-rate cost</th>
+                    <th>Share of spread</th>
+                    <th>Spread range / side</th>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drive Sim -->
+      <div id="renderer14">
+        <div class="shotlab">
+          <div class="shotlab-form drivesim-form"></div>
+          <div class="drivesim-stage">
+            <canvas class="drivesim-canvas" tabindex="0" title="Click to drive"></canvas>
+            <div class="drivesim-focus-hint">
+              <div class="title">Click the field to drive</div>
+              <div class="detail">W A S D to move · Q E to turn · Space to shoot · or press a gamepad stick</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry -->
+      <div id="renderer15">
+        <div class="telemetry">
+          <div class="telemetry-toolbar">
+            <label
+              >Source
+              <select class="telemetry-source" title="Which telemetry to show"></select
+            ></label>
+            <input class="telemetry-filter" type="search" placeholder="Filter fields" title="Filter fields by name" />
+            <label
+              >History
+              <select class="telemetry-window" title="Sparkline / stats window">
+                <option value="5">5 s</option>
+                <option value="10">10 s</option>
+                <option value="30">30 s</option>
+                <option value="120">2 min</option>
+              </select></label
+            >
+            <span class="telemetry-spacer"></span>
+            <span class="telemetry-rec-status"></span>
+            <button class="telemetry-record" title="Mark the start (and stop) of the part to put in the report">
+              ● Record
+            </button>
+            <button class="telemetry-download" title="Save a Markdown report of the recorded part, or the whole log">
+              ⬇ Download .md
+            </button>
+          </div>
+          <div class="telemetry-empty tab-centered" hidden></div>
+          <div class="telemetry-body">
+            <div class="ds-panel">
+              <div class="ds-header">
+                <div class="ds-title"></div>
+                <div class="ds-row">
+                  <div class="ds-opmode"></div>
+                  <div class="ds-state"></div>
+                </div>
+                <div class="ds-row dim">
+                  <div class="ds-battery"></div>
+                  <div class="ds-time"></div>
+                </div>
+              </div>
+              <div class="ds-alerts"></div>
+              <div class="ds-lines"></div>
+            </div>
+            <div class="telemetry-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto Check -->
+      <div id="renderer16">
+        <div class="autocheck">
+          <div class="telemetry-toolbar autocheck-toolbar">
+            <label
+              >Tries per shot
+              <select class="autocheck-samples" title="Monte Carlo copies of each shot">
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+              </select></label
+            >
+            <label
+              >Spin
+              <select class="autocheck-spin" title="Shooter spin (rate from the ball rolling off the hood)">
+                <option value="backspin">Backspin</option>
+                <option value="topspin">Topspin</option>
+                <option value="none">None</option>
+              </select></label
+            >
+            <span class="telemetry-spacer"></span>
+            <button
+              class="autocheck-rerun telemetry-download"
+              title="Run the check again (after changing Shot Lab error settings)"
+            >
+              ↻ Re-run
+            </button>
+          </div>
+          <div class="autocheck-body">
+            <div class="autocheck-status shotlab-status info"></div>
+            <div class="autocheck-empty">
+              Open a robot-code sim log (simAuto) and its shots are checked here automatically.
+            </div>
+            <div class="autocheck-cards shotlab-cards"></div>
+            <div class="autocheck-dist"></div>
+            <div class="autocheck-errors"></div>
+            <div class="autocheck-table"></div>
+          </div>
         </div>
       </div>
     </span>

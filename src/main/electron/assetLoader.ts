@@ -11,7 +11,13 @@ import path from "path";
 import { AdvantageScopeAssets } from "../../shared/AdvantageScopeAssets";
 import Preferences from "../../shared/Preferences";
 import { filterAndSortAssets, parseField2d, parseField3d, parseJoystick, parseRobot } from "../assetUtil";
-import { AUTO_ASSETS, BUNDLED_ASSETS, DEFAULT_USER_ASSETS, PREFS_FILENAME } from "./ElectronConstants";
+import {
+  AUTO_ASSETS,
+  BUNDLED_ASSETS,
+  DEFAULT_USER_ASSETS,
+  DOWNLOADED_LITE_ASSETS,
+  PREFS_FILENAME
+} from "./ElectronConstants";
 
 const USER_ASSETS_README =
   'This folder contains extra assets for the 2D field, 3D field, and joystick views. For more details, see the "Custom Fields/Robots/Joysticks" page in the AdvantageScope documentation (available through the documentation tab in the app or the URL below).\n\nhttps://docs.advantagescope.org/more-features/custom-assets';
@@ -47,13 +53,18 @@ export function loadAssets(): AdvantageScopeAssets {
     loadFailures: []
   };
 
-  // Highest priority is first
-  [getUserAssetsPath(), AUTO_ASSETS, BUNDLED_ASSETS].forEach((parentFolder) => {
+  // Highest priority is first. SolversScope never downloads assets (offline by design), so it also reads the
+  // official assets `npm install` already fetched for the Lite build (e.g. the 2026-2027 FTC field). Those come
+  // from FIRST's field CAD via AdvantageScope's asset release and must not be committed or redistributed here.
+  const seen = new Set<string>();
+  [getUserAssetsPath(), AUTO_ASSETS, BUNDLED_ASSETS, DOWNLOADED_LITE_ASSETS].forEach((parentFolder) => {
     if (!fs.existsSync(parentFolder)) return;
     fs.readdirSync(parentFolder, { withFileTypes: true })
       .sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0)) // Inverse order so newer versions take priority
       .forEach((object) => {
         if (!object.isDirectory() || object.name.startsWith(".")) return;
+        if (parentFolder === DOWNLOADED_LITE_ASSETS && seen.has(object.name)) return;
+        seen.add(object.name);
         assets.loadFailures.push(object.name); // Assume failure, remove if successful
         let isField2d = object.name.startsWith("Field2d_");
         let isField3d = object.name.startsWith("Field3d_");

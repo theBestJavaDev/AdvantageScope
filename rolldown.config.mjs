@@ -143,7 +143,7 @@ export default (cliArgs) => {
 
         "hub/dataSources/wpilog/wpilogWorker.ts",
         ...(isLite ? ["main/lite/xzWorker.ts"] : []),
-        ...(!isLite ? ["hub/exportWorker.ts"] : []),
+        ...(!isLite ? ["hub/exportWorker.ts", "hub/shotLabWorker.ts"] : []),
         ...(!isDS
           ? [
               "hub/dataSources/csv/csvWorker.ts",

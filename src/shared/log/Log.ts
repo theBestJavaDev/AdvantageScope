@@ -6,7 +6,7 @@
 // at the root directory of this project.
 
 import { Decoder } from "@msgpack/msgpack";
-import { Pose2d, Translation2d } from "../geometry";
+import { Pose2d, Translation2d, Translation3d } from "../geometry";
 import { Units } from "../units";
 import { arraysEqual, checkArrayType, lowerBound } from "../util";
 import LogField from "./LogField";
@@ -977,6 +977,46 @@ export default class Log {
       this.putNumber(itemKey + "/x", timestamp, translations[i][0]);
       this.putNumber(itemKey + "/y", timestamp, translations[i][1]);
     }
+  }
+
+  /** Writes a translation with the "Translation3d" structured type. */
+  putTranslation3d(key: string, timestamp: number, translation: Translation3d) {
+    if (!(key in this.fields)) {
+      this.createBlankField(key, LoggableType.Empty);
+      this.setStructuredType(key, "Translation3d");
+      this.setGeneratedParent(key);
+      this.processTimestamp(key, timestamp);
+    }
+    this.putNumber(key + "/x", timestamp, translation[0]);
+    this.putNumber(key + "/y", timestamp, translation[1]);
+    this.putNumber(key + "/z", timestamp, translation[2]);
+  }
+
+  /**
+   * Writes a translation array as raw WPILib Translation3d struct bytes (3 little-endian doubles each)
+   * with the "Translation3d[]" structured type. Readers use the raw fast path (see #477), so large
+   * arrays (trajectories, Monte Carlo point clouds) cost one field instead of four per point.
+   */
+  putTranslation3dArray(key: string, timestamp: number, translations: Translation3d[]) {
+    const bytes = new Uint8Array(translations.length * 24);
+    const view = new DataView(bytes.buffer);
+    translations.forEach((t, i) => {
+      view.setFloat64(i * 24, t[0], true);
+      view.setFloat64(i * 24 + 8, t[1], true);
+      view.setFloat64(i * 24 + 16, t[2], true);
+    });
+    this.putRaw(key, timestamp, bytes);
+    if (this.fields[key].getType() === LoggableType.Raw) {
+      this.setGeneratedParent(key);
+      this.setStructuredType(key, "Translation3d[]");
+    }
+  }
+
+  /** Removes every field at or below the given key (e.g. a whole simulation output table). */
+  deleteFieldsWithPrefix(prefix: string) {
+    Object.keys(this.fields)
+      .filter((key) => key === prefix || key.startsWith(prefix + "/"))
+      .forEach((key) => this.deleteField(key));
   }
 
   /** Merges a new log into this log. Returns the timestamp offset. */

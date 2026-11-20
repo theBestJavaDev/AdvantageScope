@@ -36,9 +36,9 @@ export default interface Preferences {
 
 export const DEFAULT_PREFS: Preferences = {
   theme: "system",
-  robotAddress: "robot.local",
+  robotAddress: "192.168.43.1", // REV Control Hub default
   remotePath: "/U/logs",
-  liveMode: "nt4",
+  liveMode: "ftcdashboard",
   liveSubscribeMode: "low-bandwidth",
   liveDiscard: 1200,
   publishFilter: "",
@@ -56,7 +56,7 @@ export const DEFAULT_PREFS: Preferences = {
   systemcoreStaticAddress: "",
   hasScrolledLineGraph: false,
   hasScrolledTimeline: false,
-  prefersFTC: false,
+  prefersFTC: true,
   timestamps: "start-zero"
 };
 

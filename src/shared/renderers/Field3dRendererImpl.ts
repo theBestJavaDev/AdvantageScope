@@ -10,6 +10,7 @@ import * as THREE from "three";
 import WorkerManager from "../../hub/WorkerManager";
 import { AdvantageScopeAssets, BuiltIn3dFields, Config3dField, CoordinateSystem } from "../AdvantageScopeAssets";
 import { Rotation3d, rotationSequenceToQuaternion } from "../geometry";
+import { themeColor } from "../themeColors";
 import { Units } from "../units";
 import { checkArrayType, clampValue } from "../util";
 import {
@@ -131,6 +132,7 @@ export default class Field3dRendererImpl implements TabRenderer {
   private lastHeight: number | null = 0;
   private lastDevicePixelRatio: number | null = null;
   private lastIsDark: boolean | null = null;
+  private lastBackground: string | null = null;
   private lastCommandString: string = "";
   private lastAssets: AdvantageScopeAssets | null = null;
   private lastFieldId: string = "";
@@ -1033,7 +1035,11 @@ export default class Field3dRendererImpl implements TabRenderer {
         entry.manager.setResolution(this.resolutionVector);
       });
     }
-    this.scene.background = isDark ? new THREE.Color("#222222") : new THREE.Color("#ffffff");
+    const background = themeColor("--ss-bg", isDark ? "#222222" : "#ffffff");
+    if (background !== this.lastBackground) {
+      this.lastBackground = background;
+      this.scene.background = new THREE.Color(background);
+    }
     this.renderer.setPixelRatio(devicePixelRatio);
     this.renderer.render(this.scene, this.camera);
   }

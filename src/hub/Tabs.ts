@@ -10,8 +10,10 @@ import LineGraphFilter from "../shared/LineGraphFilter";
 import TabType, { getDefaultTabTitle, getTabIcon } from "../shared/TabType";
 import { Distribution, DISTRIBUTION } from "../shared/buildConstants";
 import { getAutonomousKey, getEnabledKey, getUtilityKey } from "../shared/log/RobotState";
+import AutoCheckRenderer from "../shared/renderers/AutoCheckRenderer";
 import ConsoleRenderer from "../shared/renderers/ConsoleRenderer";
 import DocumentationRenderer from "../shared/renderers/DocumentationRenderer";
+import DriveSimRenderer from "../shared/renderers/DriveSimRenderer";
 import Field2dRenderer from "../shared/renderers/Field2dRenderer";
 import Field3dRenderer from "../shared/renderers/Field3dRenderer";
 import JoysticksRenderer from "../shared/renderers/JoysticksRenderer";
@@ -19,16 +21,20 @@ import LineGraphRenderer from "../shared/renderers/LineGraphRenderer";
 import MechanismRenderer from "../shared/renderers/MechanismRenderer";
 import MetadataRenderer from "../shared/renderers/MetadataRenderer";
 import PointsRenderer from "../shared/renderers/PointsRenderer";
+import ShotLabRenderer from "../shared/renderers/ShotLabRenderer";
 import StatisticsRenderer from "../shared/renderers/StatisticsRenderer";
 import SwerveRenderer from "../shared/renderers/SwerveRenderer";
 import TabRenderer, { NoopRenderer } from "../shared/renderers/TabRenderer";
 import TableRenderer from "../shared/renderers/TableRenderer";
+import TelemetryRenderer from "../shared/renderers/TelemetryRenderer";
 import VideoRenderer from "../shared/renderers/VideoRenderer";
 import { Units } from "../shared/units";
 import { clampValue } from "../shared/util";
 import ScrollSensor, { ScrollSensorMouseControl } from "./ScrollSensor";
 import Timeline from "./Timeline";
+import AutoCheckController from "./controllers/AutoCheckController";
 import ConsoleController from "./controllers/ConsoleController";
+import DriveSimController from "./controllers/DriveSimController";
 import Field2dController from "./controllers/Field2dController";
 import Field3dController from "./controllers/Field3dController";
 import JoysticksController from "./controllers/JoysticksController";
@@ -36,10 +42,12 @@ import LineGraphController from "./controllers/LineGraphController";
 import MechanismController from "./controllers/MechanismController";
 import MetadataController from "./controllers/MetadataController";
 import PointsController from "./controllers/PointsController";
+import ShotLabController from "./controllers/ShotLabController";
 import StatisticsController from "./controllers/StatisticsController";
 import SwerveController from "./controllers/SwerveController";
 import TabController, { NoopController } from "./controllers/TabController";
 import TableController from "./controllers/TableController";
+import TelemetryController from "./controllers/TelemetryController";
 import VideoController from "./controllers/VideoController";
 
 export default class Tabs {
@@ -97,6 +105,10 @@ export default class Tabs {
     this.FIXED_CONTROL_HEIGHTS.set(TabType.Mechanism, undefined);
     this.FIXED_CONTROL_HEIGHTS.set(TabType.Points, undefined);
     this.FIXED_CONTROL_HEIGHTS.set(TabType.Metadata, 0);
+    this.FIXED_CONTROL_HEIGHTS.set(TabType.ShotLab, 0);
+    this.FIXED_CONTROL_HEIGHTS.set(TabType.DriveSim, 0);
+    this.FIXED_CONTROL_HEIGHTS.set(TabType.Telemetry, 0);
+    this.FIXED_CONTROL_HEIGHTS.set(TabType.AutoCheck, 0);
 
     // Hover and click handling
     let mouseDownInfo: [number, number] | null = null;
@@ -568,6 +580,22 @@ export default class Tabs {
         controller = new MetadataController();
         renderer = new MetadataRenderer(rendererElement);
         break;
+      case TabType.ShotLab:
+        controller = new ShotLabController(rendererElement);
+        renderer = new ShotLabRenderer(rendererElement);
+        break;
+      case TabType.DriveSim:
+        controller = new DriveSimController(rendererElement);
+        renderer = new DriveSimRenderer(rendererElement);
+        break;
+      case TabType.Telemetry:
+        controller = new TelemetryController(rendererElement);
+        renderer = new TelemetryRenderer(rendererElement);
+        break;
+      case TabType.AutoCheck:
+        controller = new AutoCheckController(rendererElement);
+        renderer = new AutoCheckRenderer(rendererElement);
+        break;
       default:
         controller = new NoopController();
         renderer = new NoopRenderer();
@@ -608,6 +636,19 @@ export default class Tabs {
     this.CONTROLS_CONTENT.appendChild(controlsElement);
     this.RENDERER_CONTENT.appendChild(rendererElement);
     this.updateElements();
+  }
+
+  /**
+   * Adds a tab of the given type with a preset controller state, opens it in its own (satellite)
+   * window, and switches the main window back to the tab that was selected before. Used by the
+   * Drive Sim to open a live 3D view next to itself.
+   */
+  addTabInSatellite(type: TabType, controllerState: unknown) {
+    const previous = this.selectedTab;
+    this.addTab(type);
+    this.tabList[this.selectedTab].controller.restoreState(controllerState);
+    this.newSatellite();
+    if (previous >= 0) this.setSelected(previous);
   }
 
   /** Create new sallite for current tab. */

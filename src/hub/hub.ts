@@ -29,6 +29,7 @@ import FTCDashboardSource from "./dataSources/ftcdashboard/FTCDashboardSource";
 import { NT4Publisher, NT4PublisherStatus } from "./dataSources/nt4/NT4Publisher";
 import NT4Source, { NT4Mode } from "./dataSources/nt4/NT4Source";
 import RLOGServerSource from "./dataSources/rlog/RLOGServerSource";
+import { maybeApplySimLayout } from "./simLayout";
 
 // Constants
 const STATE_SAVE_PERIOD_MS = 250;
@@ -119,7 +120,7 @@ function setWindowTitle(name: string, status?: string) {
   let title =
     htmlEncode(name) +
     (status ? " (" + htmlEncode(status) + ")" : "") +
-    " &mdash; AdvantageScope" +
+    " &mdash; SolversScope" +
     (IS_LITE ? " Lite" : "") +
     (DISTRIBUTION === Distribution.LiteDS ? " (DS)" : "");
   document.getElementsByTagName("title")[0].innerHTML = title;
@@ -387,6 +388,10 @@ function startHistorical(path: string, clear = true, merge = false) {
             }
             originalTimelineRange = null;
             originalTimelineIsMaxZoom = null;
+          }
+          // SolversScope: set up the team's sim views for a BioBuzz sim log (see simLayout.ts)
+          if (status === HistoricalDataSourceStatus.Idle || status === HistoricalDataSourceStatus.DecodingField) {
+            void maybeApplySimLayout(path);
           }
           break;
         case HistoricalDataSourceStatus.Error:

@@ -1,0 +1,46 @@
+{
+  "name": "BioBuzz CAD",
+  "isFTC": true,
+  "disableSimplification": true,
+  "rotations": [],
+  "position": [
+    0,
+    0,
+    0
+  ],
+  "cameras": [],
+  "components": [
+    {
+      "zeroedRotations": [],
+      "zeroedPosition": [
+        0.003861,
+        0.0,
+        -0.25908
+      ]
+    },
+    {
+      "zeroedRotations": [],
+      "zeroedPosition": [
+        -0.048362,
+        0.0,
+        -0.320015
+      ]
+    },
+    {
+      "zeroedRotations": [],
+      "zeroedPosition": [
+        -0.159995,
+        0.0,
+        -0.109017
+      ]
+    },
+    {
+      "zeroedRotations": [],
+      "zeroedPosition": [
+        -0.1127,
+        0.0,
+        -0.129616
+      ]
+    }
+  ]
+}
