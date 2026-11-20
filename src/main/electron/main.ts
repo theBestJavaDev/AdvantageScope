@@ -1385,6 +1385,29 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
       compareRunsDialog(window);
       break;
 
+    case "choose-run-for-field":
+      // SolversScope Multi Field: a field's "Choose run…" button (one log for that field)
+      dialog
+        .showOpenDialog(window, {
+          title: "Choose the run to play in this field",
+          properties: ["openFile"],
+          filters: [
+            {
+              name: "Robot logs",
+              extensions: ["rlog", "wpilog", "wpilogxz", "hoot", "revlog", "log", "csv", "dslog", "dsevents"]
+            }
+          ]
+        })
+        .then((files) => {
+          if (files.filePaths.length === 0) return;
+          sendMessage(window, "load-run-into-field", {
+            file: files.filePaths[0],
+            uuid: message.data.uuid,
+            pane: message.data.pane
+          });
+        });
+      break;
+
     case "prompt-robot-cad":
       // SolversScope: sim log drawn with a generic robot; ask for the team's CAD (see robotCad.ts)
       promptRobotCad(window).then(async (name) => {

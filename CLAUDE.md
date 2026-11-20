@@ -103,6 +103,10 @@ SolversScope watches). Per-computer setup:
   `controller3` / `renderer3` templates). File → Compare Runs (Ctrl+Alt+O) or the tab's button loads up to 3 logs
   merged under `/Log0..2` (aligned at the auto start) and builds one pane per run (`src/hub/compareRuns.ts`).
   `sendAllPreferences` finds File/App menu items by label, so new menu items are safe.
+  Each field has a "Choose run…" button (`choose-run-for-field` → `load-run-into-field` → `queueRunForField`):
+  the log is added to what's loaded and that field is set up for it. Pose lists hide behind "Details".
+- **Keep it simple for new members:** prefer buttons that do the whole job (Choose run…, Compare Runs) over
+  drag-and-drop, plain-language status text, and views that show results on open (Shot Lab runs once on open).
 - **Theme:** black and gold by default. "Match System" (the old default) also shows dark; only Preferences → Light
   gives the light theme (`solversThemeSource` in `main.ts`).
 - **Robot CAD:** when a sim log's robot is on a generic model (stock Drive Base/KitBot) or a missing one,

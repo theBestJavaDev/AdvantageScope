@@ -21,7 +21,7 @@ import Sidebar from "./Sidebar";
 import SourceList from "./SourceList";
 import Tabs from "./Tabs";
 import WorkerManager from "./WorkerManager";
-import { beginCompare, maybeSetUpCompare } from "./compareRuns";
+import { beginCompare, maybeSetUpCompare, queueRunForField } from "./compareRuns";
 import { HistoricalDataSource, HistoricalDataSourceStatus } from "./dataSources/HistoricalDataSource";
 import { LiveDataSource, LiveDataSourceStatus } from "./dataSources/LiveDataSource";
 import LiveDataTuner from "./dataSources/LiveDataTuner";
@@ -797,6 +797,22 @@ async function handleMainMessage(message: NamedMessage) {
       } else {
         const runs = beginCompare(message.data.files as string[]);
         runs.forEach((file, index) => startHistorical(file, index === 0, runs.length > 1));
+      }
+      break;
+
+    case "load-run-into-field":
+      // SolversScope Multi Field: one log for one field. Added to what's loaded (or opened, if
+      // nothing is), then that field is set up for it (compareRuns.ts)
+      if (isExporting) {
+        window.sendMainMessage("error", {
+          title: "Cannot load the run",
+          content: "Please wait for the export to finish, then try again."
+        });
+      } else {
+        const first = liveActive || historicalSources.length === 0;
+        const prefix = first ? "" : "/" + MERGE_PREFIX + historicalSources.length.toString();
+        queueRunForField(message.data.file, prefix, message.data.uuid, message.data.pane);
+        startHistorical(message.data.file, first, !first);
       }
       break;
 

@@ -28,6 +28,34 @@ import { SIM_LAYOUT_URL, TEAM_CAD, TIPPING_FIELD_ID } from "./simLayout";
 export const MAX_COMPARE_RUNS = 3;
 
 let pending: string[] | null = null;
+/** Single runs waiting to load into one field of a Multi Field tab ("Choose run…"). */
+let pendingFields: { file: string; prefix: string; uuid: string; pane: number }[] = [];
+
+/** A field's "Choose run…": once `file` has loaded under `prefix`, that field is set up for it. */
+export function queueRunForField(file: string, prefix: string, uuid: string, pane: number) {
+  pendingFields = pendingFields.filter((entry) => !(entry.uuid === uuid && entry.pane === pane));
+  pendingFields.push({ file, prefix, uuid, pane });
+}
+
+async function fillQueuedFields(keys: string[]) {
+  const ready = pendingFields.filter((entry) =>
+    entry.prefix === "" ? keys.length > 0 : keys.some((key) => key.startsWith(entry.prefix + "/"))
+  );
+  if (ready.length === 0) return;
+  pendingFields = pendingFields.filter((entry) => !ready.includes(entry));
+  const states = await Promise.all(ready.map((entry) => stateForRun(entry.file, entry.prefix, keys)));
+  const tabs = window.tabs.saveState();
+  ready.forEach((entry, i) => {
+    const tab = tabs.tabs.find((t) => t.controllerUUID === entry.uuid);
+    const panes = (tab?.controller as MultiFieldState | null)?.panes;
+    if (panes === undefined || entry.pane < 0 || entry.pane >= panes.length) return;
+    panes[entry.pane] = { title: baseName(entry.file), field3d: states[i] };
+  });
+  window.tabs.restoreState(tabs);
+  const starts = ready.map((entry) => runStart(entry.prefix)).filter((t): t is number => t !== null);
+  if (starts.length > 0) window.selection.setSelectedTime(Math.min(...starts));
+  window.selection.play();
+}
 
 /** Starts a comparison: call before the logs are opened. Returns the files actually used (max 3). */
 export function beginCompare(files: string[]): string[] {
@@ -136,7 +164,7 @@ function isReplaceable(controller: unknown): boolean {
 }
 
 /** When a run starts: the auto's START if logged, else the start of that run's data. */
-function runStart(prefix: string, keys: string[]): number | null {
+function runStart(prefix: string): number | null {
   const leg = applyKeyPrefix(prefix, "RealOutputs/Auto/leg");
   if (window.log.getType(leg) === LoggableType.String) {
     const legs = window.log.getString(leg, -Infinity, Infinity);
@@ -150,9 +178,10 @@ function runStart(prefix: string, keys: string[]): number | null {
  * Called while the logs decode; once every run's fields are known, opens one 3D window per run.
  */
 export async function maybeSetUpCompare(): Promise<void> {
+  const keys = window.log.getFieldKeys();
+  if (pendingFields.length > 0) await fillQueuedFields(keys);
   if (pending === null) return;
   const files = pending;
-  const keys = window.log.getFieldKeys();
   const prefixes = files.length > 1 ? files.map((_, i) => "/" + MERGE_PREFIX + i.toString()) : [""];
   if (!prefixes.every((prefix) => (prefix === "" ? keys.length > 0 : keys.some((k) => k.startsWith(prefix + "/"))))) {
     return; // some run is still loading
@@ -173,12 +202,12 @@ export async function maybeSetUpCompare(): Promise<void> {
     controller: { panes: panes } as MultiFieldState,
     controllerUUID: createUUID(),
     renderer: null,
-    controlsHeight: 230
+    controlsHeight: 96
   } as TabsState["tabs"][number]);
   window.tabs.restoreState({ selected: kept.length - 1, tabs: kept });
 
   // Start at the first run's auto START and play
-  const starts = prefixes.map((prefix) => runStart(prefix, keys)).filter((t): t is number => t !== null);
+  const starts = prefixes.map((prefix) => runStart(prefix)).filter((t): t is number => t !== null);
   window.selection.setSelectedTime(starts.length > 0 ? Math.min(...starts) : window.log.getTimestampRange()[0]);
   window.selection.play();
 }

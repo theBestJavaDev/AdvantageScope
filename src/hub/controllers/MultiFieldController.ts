@@ -26,15 +26,17 @@ export default class MultiFieldController implements TabController {
 
   private PANES: HTMLElement;
   private ADD_BUTTON: HTMLButtonElement;
-  private panes: { controller: Field3dController; element: HTMLElement; titleInput: HTMLInputElement }[] = [];
+  private panes: {
+    controller: Field3dController;
+    element: HTMLElement;
+    titleInput: HTMLInputElement;
+    detailsOpen: boolean;
+  }[] = [];
 
   constructor(root: HTMLElement) {
     root.classList.add("multifield-controls");
     const toolbar = document.createElement("div");
     toolbar.className = "multifield-toolbar";
-    const label = document.createElement("span");
-    label.className = "multifield-label";
-    label.textContent = "Fields";
     this.ADD_BUTTON = document.createElement("button");
     this.ADD_BUTTON.className = "multifield-button";
     this.ADD_BUTTON.textContent = "+ Add field";
@@ -42,13 +44,13 @@ export default class MultiFieldController implements TabController {
     this.ADD_BUTTON.addEventListener("click", () => this.addPane());
     const compare = document.createElement("button");
     compare.className = "multifield-button";
-    compare.textContent = "Compare runs…";
-    compare.title = "Open two or three logs, one per field";
+    compare.textContent = "Load 2–3 runs at once…";
+    compare.title = "Pick two or three log files: each gets its own field";
     compare.addEventListener("click", () => window.sendMainMessage("open-compare-runs"));
     const hint = document.createElement("span");
     hint.className = "multifield-hint";
-    hint.textContent = "Drag fields from the sidebar into each field's list, like a 3D Field tab.";
-    toolbar.append(label, this.ADD_BUTTON, compare, hint);
+    hint.textContent = "Each field plays one run. Press “Choose run…” on a field to put a log in it.";
+    toolbar.append(this.ADD_BUTTON, compare, hint);
     this.PANES = document.createElement("div");
     this.PANES.className = "multifield-panes";
     root.append(toolbar, this.PANES);
@@ -72,18 +74,37 @@ export default class MultiFieldController implements TabController {
     titleInput.className = "multifield-pane-title";
     titleInput.value = title ?? "Field " + (this.panes.length + 1);
     titleInput.title = "Name shown on this field";
+    const choose = document.createElement("button");
+    choose.className = "multifield-button multifield-choose";
+    choose.textContent = "Choose run…";
+    choose.title = "Pick a log file to play in this field";
+    const details = document.createElement("button");
+    details.className = "multifield-details";
+    details.textContent = "Details ▸";
+    details.title = "Show what this field draws and which field model it uses";
     const remove = document.createElement("button");
     remove.className = "multifield-remove";
     remove.textContent = "✕";
     remove.title = "Remove this field";
-    header.append(titleInput, remove);
+    header.append(titleInput, choose, details, remove);
     element.append(header, controls);
     this.PANES.appendChild(element);
 
     const controller = new Field3dController(controls);
     if (field3dState !== undefined) controller.restoreState(field3dState);
-    const pane = { controller, element, titleInput };
+    const pane = { controller, element, titleInput, detailsOpen: false };
     this.panes.push(pane);
+    const showDetails = (open: boolean) => {
+      pane.detailsOpen = open;
+      controls.hidden = !open;
+      details.textContent = open ? "Details ▾" : "Details ▸";
+      if (open) window.tabs?.ensureControlsHeight(this.UUID, 260);
+    };
+    showDetails(false);
+    details.addEventListener("click", () => showDetails(!pane.detailsOpen));
+    choose.addEventListener("click", () =>
+      window.sendMainMessage("choose-run-for-field", { uuid: this.UUID, pane: this.panes.indexOf(pane) })
+    );
     remove.addEventListener("click", () => this.removePane(this.panes.indexOf(pane)));
     this.updateButtons();
   }
@@ -136,7 +157,11 @@ export default class MultiFieldController implements TabController {
 
   getCommand(): MultiFieldRendererCommand {
     return {
-      panes: this.panes.map((pane) => ({ title: pane.titleInput.value, command: pane.controller.getCommand() }))
+      panes: this.panes.map((pane) => ({
+        title: pane.titleInput.value,
+        empty: ((pane.controller.saveState() as { sources?: unknown[] }).sources ?? []).length === 0,
+        command: pane.controller.getCommand()
+      }))
     };
   }
 }

@@ -9,13 +9,14 @@ import Field3dRenderer, { Field3dRendererCommand } from "./Field3dRenderer";
 import TabRenderer from "./TabRenderer";
 
 export type MultiFieldRendererCommand = {
-  panes: { title: string; command: Field3dRendererCommand }[];
+  /** `empty`: nothing assigned to this field yet (shows how to fill it). */
+  panes: { title: string; empty: boolean; command: Field3dRendererCommand }[];
 };
 
 /** Up to three 3D fields side by side (Multi Field tab). Each pane is a normal 3D field view. */
 export default class MultiFieldRenderer implements TabRenderer {
   private GRID: HTMLElement;
-  private cells: { element: HTMLElement; label: HTMLElement; renderer: Field3dRenderer }[] = [];
+  private cells: { element: HTMLElement; label: HTMLElement; empty: HTMLElement; renderer: Field3dRenderer }[] = [];
   private restoreCache: unknown[] = [];
 
   constructor(root: HTMLElement) {
@@ -51,14 +52,22 @@ export default class MultiFieldRenderer implements TabRenderer {
     view.className = "multifield-view";
     const label = document.createElement("div");
     label.className = "multifield-cell-label";
-    element.append(view, label);
+    const empty = document.createElement("div");
+    empty.className = "multifield-empty";
+    const emptyTitle = document.createElement("div");
+    emptyTitle.className = "multifield-empty-title";
+    emptyTitle.textContent = "No run here yet";
+    const emptyText = document.createElement("div");
+    emptyText.textContent = "Press “Choose run…” under this field and pick a log file.";
+    empty.append(emptyTitle, emptyText);
+    element.append(view, label, empty);
     this.GRID.appendChild(element);
     const renderer = new Field3dRenderer(view);
     const index = this.cells.length;
     if (index < this.restoreCache.length && this.restoreCache[index] !== null) {
       renderer.restoreState(this.restoreCache[index]);
     }
-    this.cells.push({ element, label, renderer });
+    this.cells.push({ element, label, empty, renderer });
   }
 
   private removeCell() {
@@ -81,6 +90,7 @@ export default class MultiFieldRenderer implements TabRenderer {
       const cell = this.cells[i];
       if (cell === undefined) return;
       if (cell.label.textContent !== pane.title) cell.label.textContent = pane.title;
+      cell.empty.hidden = !pane.empty;
       cell.renderer.render(pane.command);
     });
   }

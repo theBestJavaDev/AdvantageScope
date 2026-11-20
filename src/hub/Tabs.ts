@@ -511,6 +511,14 @@ export default class Tabs {
     this.updateControlsHeight();
   }
 
+  /** SolversScope: makes a tab's controls at least `minHeight` px tall (e.g. Multi Field "Details"). */
+  ensureControlsHeight(controllerUUID: string, minHeight: number) {
+    const tab = this.tabList.find((entry) => entry.controller.UUID === controllerUUID);
+    if (tab === undefined || tab.controlsHeight >= minHeight) return;
+    tab.controlsHeight = minHeight;
+    this.updateControlsHeight();
+  }
+
   /** Creates a new tab. */
   addTab(type: TabType) {
     // Select existing metadata tab
@@ -636,7 +644,12 @@ export default class Tabs {
       rendererElement: rendererElement,
       controller: controller,
       renderer: renderer,
-      controlsHeight: controlsHeightConfig === undefined ? this.DEFAULT_CONTROLS_HEIGHT : controlsHeightConfig
+      controlsHeight:
+        type === TabType.MultiField // SolversScope: just the field headers until Details is opened
+          ? 96
+          : controlsHeightConfig === undefined
+          ? this.DEFAULT_CONTROLS_HEIGHT
+          : controlsHeightConfig
     });
     this.selectedTab += 1;
     this.CONTROLS_CONTENT.appendChild(controlsElement);

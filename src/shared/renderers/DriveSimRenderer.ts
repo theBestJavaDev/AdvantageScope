@@ -851,7 +851,9 @@ export default class DriveSimRenderer implements TabRenderer {
         " m/s · " +
         sol.distance.toFixed(2) +
         " m to target"
-      : "No shot solution at " + sol.distance.toFixed(2) + " m · move or change the hood angle";
+      : "Can't score from here (" +
+        sol.distance.toFixed(2) +
+        " m) · drive in front of the CELL's open side (MOUTH arrow)";
     ctx.font = "bold 12px 'Inter Variable', sans-serif";
     const solShown = ellipsize(ctx, solText, w - 140);
     const sw = ctx.measureText(solShown).width + 34;

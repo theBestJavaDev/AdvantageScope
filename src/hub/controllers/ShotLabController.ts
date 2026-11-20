@@ -288,6 +288,8 @@ export default class ShotLabController implements TabController {
       }
     );
     this.syncInputs();
+    // Show results right away instead of empty charts (after a restored layout applies its settings)
+    window.setTimeout(() => this.run(false), 400);
   }
 
   private pieceName(): string {
