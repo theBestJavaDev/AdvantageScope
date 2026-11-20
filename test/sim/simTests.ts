@@ -246,6 +246,91 @@ function check(name: string, ok: boolean, info = "") {
   check("drop test 1 m -> 0.36 m gives e = 0.6", Math.abs((fitRestitution(1, 0.36) ?? 0) - 0.6) < 1e-9);
 }
 
+// ---------------------------------------------------------------- Bounce, friction, rotation
+{
+  const big = { ...FTC_FIELD, halfX: 50, halfY: 50 };
+  const calm = { ...DEFAULT_ENVIRONMENT, airDensity: 0 };
+  const piece = { ...DEFAULT_GAME_PIECE, dragCoefficient: 0, magnusScale: 0 };
+  const engine = new PhysicsEngine(piece, calm, big);
+  const energy = (v: number[], w: number[], z: number) => {
+    const m = piece.mass;
+    const I = piece.inertiaFactor * m * piece.radius * piece.radius;
+    return 0.5 * m * (v[0] ** 2 + v[1] ** 2 + v[2] ** 2) + 0.5 * I * (w[0] ** 2 + w[1] ** 2 + w[2] ** 2) + m * 9.80665 * z;
+  };
+
+  // 1 m drop: first rebound height follows e^2 (restitution is defined at the drop-test speed)
+  {
+    const r = engine.simulate(makeBallState([0, 0, 1 + piece.radius], [0, 0, 0], [0, 0, 0]), {
+      duration: 1.2,
+      timeStep: 0.0005
+    });
+    const afterBounce = r.samples.filter((x) => x.time > (r.landing?.time ?? 0));
+    const apex = Math.max(...afterBounce.slice(0, 60).map((x) => x.position[2] - piece.radius));
+    const expected = piece.floorRestitution ** 2;
+    check("1 m drop rebounds to e^2 of the height", Math.abs(apex - expected) < 0.04, `${apex.toFixed(3)} vs ${expected.toFixed(3)} m`);
+  }
+
+  // Harder hits bounce proportionally less than soft ones
+  {
+    const rebound = (v: number) => {
+      const r = engine.simulate(makeBallState([0, 0, piece.radius + 0.0005], [0, 0, -v], [0, 0, 0]), {
+        duration: 0.5,
+        timeStep: 0.0002
+      });
+      const c = r.contacts.find((x) => x.surface === "floor");
+      const after = r.samples.find((x) => c !== undefined && x.time > c.time + 0.002);
+      return after === undefined ? 0 : after.velocity[2] / v;
+    };
+    const soft = rebound(2);
+    const hard = rebound(9);
+    check("hard impacts lose more energy than soft ones", soft > hard + 0.03, `e = ${soft.toFixed(3)} (2 m/s) vs ${hard.toFixed(3)} (9 m/s)`);
+  }
+
+  // Backspin ball landing moving forward checks up (loses forward speed); topspin kicks forward
+  {
+    const land = (spinY: number) => {
+      const r = engine.simulate(makeBallState([0, 0, 0.5], [3, 0, -3], [0, spinY, 0]), { duration: 0.5, timeStep: 0.0005 });
+      const c = r.contacts.find((x) => x.surface === "floor");
+      const after = r.samples.find((x) => c !== undefined && x.time > c.time + 0.01);
+      return after === undefined ? NaN : after.velocity[0];
+    };
+    // +Y spin axis: positive = topspin for +X travel (top surface moves forward)
+    const top = land(150);
+    const none = land(0);
+    const back = land(-150);
+    check("backspin checks, topspin kicks (post-bounce forward speed)", back < none && none < top, `${back.toFixed(2)} / ${none.toFixed(2)} / ${top.toFixed(2)} m/s`);
+  }
+
+  // A sliding ball ends up rolling without slipping, and a rolling ball decays smoothly to rest
+  {
+    const r = engine.simulate(makeBallState([0, 0, piece.radius], [3, 0, 0], [0, 0, 0]), { duration: 6, timeStep: 0.001 });
+    const mid = r.samples[Math.floor(r.samples.length * 0.1)];
+    const rolling = Math.abs(mid.velocity[0] - mid.angularVelocity[1] * piece.radius) < 0.15 * Math.abs(mid.velocity[0]) + 0.02;
+    const last = r.finalState;
+    check("sliding ball turns into rolling (v = w r)", rolling, `v ${mid.velocity[0].toFixed(2)} vs w r ${(mid.angularVelocity[1] * piece.radius).toFixed(2)}`);
+    check("rolling ball comes to rest", Math.hypot(last.velocity[0], last.velocity[1]) < 0.05, `${Math.hypot(last.velocity[0], last.velocity[1]).toFixed(3)} m/s at the end`);
+  }
+
+  // A ball spinning flat on the floor slows down from pivot friction
+  {
+    const r = engine.simulate(makeBallState([0, 0, piece.radius], [0, 0, 0], [0, 0, 30]), { duration: 2, timeStep: 0.001, stopWhenAtRest: false });
+    const w = r.finalState.angularVelocity[2];
+    check("flat spin on the floor slows down", w < 29 && w >= 0, `${w.toFixed(1)} rad/s after 2 s`);
+  }
+
+  // Contacts never add energy
+  {
+    let worst = 0;
+    for (const [vx, vz, wy] of [[4, -5, 80], [-2, -8, -120], [6, 3, 0], [0, -9, 200]]) {
+      const r = engine.simulate(makeBallState([0, 0, 0.4], [vx, 0, vz], [0, wy, 0]), { duration: 3, timeStep: 0.0005, stopWhenAtRest: false });
+      const e0 = energy([vx, 0, vz], [0, wy, 0], 0.4);
+      const s = r.finalState;
+      worst = Math.max(worst, (energy(s.velocity, s.angularVelocity, s.position[2]) - e0) / e0);
+    }
+    check("bounces never create energy", worst < 0.02, `worst change ${(worst * 100).toFixed(2)} %`);
+  }
+}
+
 // ---------------------------------------------------------------- Auto Check tuning
 {
   const scenario = buildScenario(defaultShotLabConfig());

@@ -23,6 +23,9 @@ export class TeleopController {
 
   private keysPressed: Set<string> = new Set();
 
+  public onLaunch?: (robotPose: Pose3d) => void;
+  public onIntake?: (robotPose: Pose3d) => void;
+
   constructor() {
     this.setupKeyboardListeners();
   }
@@ -66,12 +69,37 @@ export class TeleopController {
       ) {
         return;
       }
+
+      if (!this.keysPressed.has(event.code)) {
+        // Single trigger actions
+        if (event.code === "Space" && this.isTeleopActive) {
+          this.triggerLaunch();
+        }
+        if (event.code === "Enter" && this.isTeleopActive) {
+          this.triggerIntake();
+        }
+      }
+
       this.keysPressed.add(event.code);
     });
 
     window.addEventListener("keyup", (event) => {
       this.keysPressed.delete(event.code);
     });
+  }
+
+  private lastRobotPose: Pose3d = { translation: [0, 0, 0], rotation: [1, 0, 0, 0] };
+
+  private triggerLaunch() {
+    if (this.onLaunch) {
+      this.onLaunch(this.lastRobotPose);
+    }
+  }
+
+  private triggerIntake() {
+    if (this.onIntake) {
+      this.onIntake(this.lastRobotPose);
+    }
   }
 
   public updateVelocities(dt: number): RobotVelocities {
@@ -89,7 +117,7 @@ export class TeleopController {
     if (this.keysPressed.has("KeyA")) targetVy += this.maxLinearVelocity;
     if (this.keysPressed.has("KeyD")) targetVy -= this.maxLinearVelocity;
 
-    // QE Turning
+    // QE Turning / Rotation
     if (this.keysPressed.has("KeyQ")) targetOmega += this.maxAngularVelocity;
     if (this.keysPressed.has("KeyE")) targetOmega -= this.maxAngularVelocity;
 
@@ -107,8 +135,9 @@ export class TeleopController {
   public stepRobotPose(
     currentPose: Pose3d,
     dt: number,
-    physicsEngine: PhysicsEngine
+    physicsEngine?: PhysicsEngine
   ): Pose3d {
+    this.lastRobotPose = currentPose;
     if (!this.isTeleopActive) return currentPose;
 
     const velocities = this.updateVelocities(dt);
@@ -127,10 +156,12 @@ export class TeleopController {
       currentPose.translation[2]
     ];
 
-    return {
+    const newPose: Pose3d = {
       translation: updatedTranslation,
       rotation: updatedRotation
     };
+    this.lastRobotPose = newPose;
+    return newPose;
   }
 
   private approach(current: number, target: number, maxStep: number): number {

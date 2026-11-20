@@ -52,6 +52,21 @@ export interface GamePieceProperties {
   frictionCoefficient: number;
   /** Rolling resistance coefficient on the tiles (deceleration = Crr * g). */
   rollingResistance: number;
+  /**
+   * Fraction of tangential contact velocity returned on impact while gripping (Walton-Braun style
+   * spin rebound: a ball landing with backspin "kicks" back a bit instead of dead-stopping the slip).
+   * Default 0.2.
+   */
+  tangentialRestitution?: number;
+  /**
+   * How fast restitution falls with impact speed, per m/s above the 1 m drop-test speed (4.4 m/s).
+   * Plastic shells soften on hard hits and bounce livelier on soft ones. 0 = constant. Default 0.03.
+   */
+  restitutionSoftening?: number;
+  /** Static friction = this x the sliding coefficient (grip before slip). Default 1.2. */
+  staticFrictionRatio?: number;
+  /** Resistance to spin about the contact normal (a ball spinning flat on the floor slows). Default 0.1. */
+  pivotFriction?: number;
 }
 
 export interface EnvironmentProperties {
@@ -263,6 +278,9 @@ interface Derivative {
   dw: Vector3;
 }
 
+/** Impact speed of a 1 m drop test, the reference for the restitution values (m/s). */
+const DROP_TEST_SPEED = Math.sqrt(2 * 9.80665 * 1);
+
 /** Lift coefficient vs spin parameter S = r|w|/|v| (saturating fit to published sphere data). */
 export function liftCoefficient(spinParameter: number, magnusScale: number, maxCl: number): number {
   if (spinParameter <= 0) return 0;
@@ -378,6 +396,11 @@ export class PhysicsEngine {
       );
     }
 
+    const betaT = this.piece.tangentialRestitution ?? 0.2;
+    const softening = this.piece.restitutionSoftening ?? 0.03;
+    const staticRatio = this.piece.staticFrictionRatio ?? 1.2;
+    const pivot = this.piece.pivotFriction ?? 0.1;
+
     for (const plane of planes) {
       const penetration = r - plane.distance;
       if (penetration <= 0) continue;
@@ -388,9 +411,13 @@ export class PhysicsEngine {
       state.position = addScaled(state.position, n, penetration);
 
       const vn = dot(state.velocity, n);
-      // Velocity-dependent restitution: slow impacts don't bounce (prevents endless micro-bounces)
+      // Velocity-dependent restitution: slow impacts don't bounce (prevents endless micro-bounces),
+      // and harder hits lose a little more energy than the drop-test value.
       const restThreshold = 2 * g * dt + 0.05;
-      const e = -vn > restThreshold ? plane.restitution : 0;
+      const impactSpeed = -vn;
+      const isImpact = impactSpeed > restThreshold;
+      const speedFactor = Math.min(1.15, Math.max(0.5, 1 - softening * (impactSpeed - DROP_TEST_SPEED)));
+      const e = isImpact ? Math.min(0.98, plane.restitution * speedFactor) : 0;
       let normalImpulse = vn < 0 ? -(1 + e) * m * vn : 0;
       // Resting on the floor: gravity's support impulse still provides friction
       if (plane.surface === "floor") normalImpulse = Math.max(normalImpulse, m * g * dt);
@@ -401,20 +428,31 @@ export class PhysicsEngine {
       const vSlip = addScaled(vContact, n, -dot(vContact, n));
       const slipSpeed = length(vSlip);
 
-      // Impulse that would make the contact point roll without slipping
-      let tangentImpulse = scale(vSlip, -m / (1 + 1 / k));
-      const maxFriction = mu * normalImpulse;
-      const slipping = length(tangentImpulse) > maxFriction;
+      // Impulse that would stop the slip (rolling without slipping). On a real impact the grip also
+      // returns a share of the tangential velocity (spin rebound); at rest it must not, or it jitters.
+      const stickGain = isImpact ? 1 + betaT : 1;
+      let tangentImpulse = scale(vSlip, (-stickGain * m) / (1 + 1 / k));
+      const stickLimit = mu * staticRatio * normalImpulse;
+      const slipping = length(tangentImpulse) > stickLimit;
       if (slipping && slipSpeed > 1e-9) {
-        tangentImpulse = scale(vSlip, -maxFriction / slipSpeed);
+        // Skidding: kinetic friction (a little below the static limit)
+        tangentImpulse = scale(vSlip, (-mu * normalImpulse) / slipSpeed);
       }
 
       state.velocity = add(state.velocity, scale(n, vn < 0 ? -(1 + e) * vn : 0));
       state.velocity = addScaled(state.velocity, tangentImpulse, 1 / m);
       state.angularVelocity = addScaled(state.angularVelocity, cross(rc, tangentImpulse), 1 / I);
 
-      // Rolling resistance on the tiles
-      if (plane.surface === "floor" && e === 0) {
+      // Pivot (spin-about-the-normal) friction: a ball spinning flat on the floor / against a wall slows.
+      const spinAlongNormal = dot(state.angularVelocity, n);
+      if (Math.abs(spinAlongNormal) > 1e-9) {
+        const maxDelta = (pivot * mu * r * normalImpulse) / I;
+        const delta = Math.sign(spinAlongNormal) * Math.min(Math.abs(spinAlongNormal), maxDelta);
+        state.angularVelocity = addScaled(state.angularVelocity, n, -delta);
+      }
+
+      // Rolling resistance on the tiles (only while actually rolling; skids are handled by friction)
+      if (plane.surface === "floor" && !isImpact && !slipping) {
         const horiz: Vector3 = [state.velocity[0], state.velocity[1], 0];
         const speed = length(horiz);
         const decel = this.piece.rollingResistance * g * dt;
@@ -431,12 +469,12 @@ export class PhysicsEngine {
         }
       }
 
-      if (events !== null && -vn > restThreshold) {
+      if (events !== null && isImpact) {
         events.push({
           time: state.time,
           position: [...state.position] as Vector3,
           surface: plane.surface,
-          impactSpeed: -vn,
+          impactSpeed: impactSpeed,
           slipping
         });
       }

@@ -9,6 +9,7 @@ import CameraControls from "camera-controls";
 import * as THREE from "three";
 import WorkerManager from "../../hub/WorkerManager";
 import { AdvantageScopeAssets, BuiltIn3dFields, Config3dField, CoordinateSystem } from "../AdvantageScopeAssets";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Rotation3d, rotationSequenceToQuaternion } from "../geometry";
 import { themeColor } from "../themeColors";
 import { Units } from "../units";
@@ -50,8 +51,8 @@ export default class Field3dRendererImpl implements TabRenderer {
   private DS_CAMERA_TARGET_FTC = new THREE.Vector3(0, -0.2, 0);
   private CONTROLS_MIN_DISTANCE_FRC = 1;
   private CONTROLS_MIN_DISTANCE_FTC = 0.5;
-  private MATERIAL_SPECULAR: THREE.Color = new THREE.Color(0x666666); // Overridden if not cinematic
-  private MATERIAL_SHININESS: number = 100; // Overridden if not cinematic
+  private MATERIAL_SPECULAR: THREE.Color = new THREE.Color(0xaaaaaa); // Overridden if not cinematic
+  private MATERIAL_SHININESS: number = 120; // Overridden if not cinematic
   private SPOT_LIGHT_POSITIONS_FRC = [
     [0, 1, 8, 0, -2, 0],
     [6, -3, 8, 6, 2, 0],
@@ -62,8 +63,8 @@ export default class Field3dRendererImpl implements TabRenderer {
     [2, -1.5, 4, 0, 1, 0],
     [-2, 1.5, 4, 0, -1, 0]
   ] as const;
-  private SPOT_LIGHT_INTENSITY_FRC = 150;
-  private SPOT_LIGHT_INTENSITY_FTC = 30;
+  private SPOT_LIGHT_INTENSITY_FRC = 250;
+  private SPOT_LIGHT_INTENSITY_FTC = 60;
   private WPILIB_ROTATION = rotationSequenceToQuaternion([
     {
       axis: "x",
@@ -168,7 +169,26 @@ export default class Field3dRendererImpl implements TabRenderer {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = mode === "cinematic";
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if (mode === "cinematic") {
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.15;
+    }
     this.scene = new THREE.Scene();
+    if (mode === "cinematic") {
+      // Image-based lighting: a studio/arena environment gives metal, plastic and clear coat real
+      // reflections instead of flat shading. Only used for reflections + ambient fill (the background
+      // stays the arena).
+      try {
+        const pmrem = new THREE.PMREMGenerator(this.renderer);
+        const room = new RoomEnvironment();
+        this.scene.environment = pmrem.fromScene(room, 0.03).texture;
+        this.scene.environmentIntensity = 0.55;
+        room.dispose();
+        pmrem.dispose();
+      } catch (error) {
+        console.warn("Could not create the cinematic environment map", error);
+      }
+    }
     if (mode !== "cinematic") {
       this.MATERIAL_SPECULAR = new THREE.Color(0x000000);
       this.MATERIAL_SHININESS = 0;
@@ -222,12 +242,13 @@ export default class Field3dRendererImpl implements TabRenderer {
       this.controls.smoothTime = 0.1;
       this.controls.draggingSmoothTime = 0.1;
       this.controls.infinityDolly = true;
+      this.controls.dollyToCursor = true;
       this.controls.dollySpeed = 0.25;
     }
 
     // Add lights
     {
-      const light = new THREE.HemisphereLight(0xffffff, 0x444444, mode === "cinematic" ? 0.5 : 2);
+      const light = new THREE.HemisphereLight(0xffffff, 0x444444, mode === "cinematic" ? 0.25 : 2);
       this.scene.add(light);
     }
     if (mode !== "cinematic") {
@@ -240,9 +261,12 @@ export default class Field3dRendererImpl implements TabRenderer {
         light.position.set(x, y, z);
         light.target.position.set(targetX, targetY, targetZ);
         light.castShadow = true;
-        light.shadow.mapSize.width = 2048;
-        light.shadow.mapSize.height = 2048;
-        light.shadow.bias = -0.0001;
+        light.shadow.mapSize.width = 4096;
+        light.shadow.mapSize.height = 4096;
+        light.shadow.bias = -0.00005;
+        light.shadow.normalBias = 0.015;
+        light.shadow.radius = 3;
+        light.shadow.blurSamples = 16;
         this.wpilibCoordinateGroup.add(light, light.target);
         this.spotLights.push(light);
       });

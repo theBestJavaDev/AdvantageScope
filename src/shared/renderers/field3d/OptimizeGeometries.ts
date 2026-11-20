@@ -16,6 +16,67 @@ export const STANDARD_MAX_RADIUS = 0.04;
 export const CINEMATIC_MAX_RADIUS = 0.02;
 export const FTC_MULTIPLIER = 0.25; // FTC components are smaller, adjust appropriately to avoid cutting too agressively
 
+/**
+ * Cinematic mode draws everything with physically based materials (lit by the environment map and
+ * soft shadows in Field3dRendererImpl); the other modes keep the cheap Phong look.
+ */
+function makeMaterial(
+  kind: "normal" | "transparent" | "carpet",
+  mode: "low-power" | "standard" | "cinematic",
+  materialSpecular: THREE.Color,
+  materialShininess: number
+): THREE.Material {
+  if (mode === "cinematic") {
+    if (kind === "carpet") {
+      // Foam tiles / carpet: rough, no sheen
+      return new THREE.MeshPhysicalMaterial({
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        roughness: 0.93,
+        metalness: 0,
+        sheen: 0.35,
+        sheenRoughness: 0.8,
+        sheenColor: new THREE.Color(0x888888)
+      });
+    } else if (kind === "transparent") {
+      // Polycarbonate / acrylic
+      return new THREE.MeshPhysicalMaterial({
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        roughness: 0.06,
+        metalness: 0,
+        clearcoat: 1,
+        clearcoatRoughness: 0.03,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false
+      });
+    }
+    // Anodized aluminum / molded plastic: satin base with a glossy clear coat
+    return new THREE.MeshPhysicalMaterial({
+      vertexColors: true,
+      side: THREE.DoubleSide,
+      roughness: 0.48,
+      metalness: 0.2,
+      clearcoat: 0.35,
+      clearcoatRoughness: 0.3,
+      envMapIntensity: 1
+    });
+  }
+  const options: THREE.MeshPhongMaterialParameters = {
+    vertexColors: true,
+    side: THREE.DoubleSide,
+    specular: materialSpecular,
+    shininess: kind === "carpet" ? 0 : materialShininess
+  };
+  if (kind === "transparent") {
+    options.transparent = true;
+    options.opacity = 0.2;
+    options.depthWrite = false;
+  }
+  return new THREE.MeshPhongMaterial(options);
+}
+
 export default function optimizeGeometries(
   object: THREE.Object3D,
   mode: "low-power" | "standard" | "cinematic",
@@ -38,19 +99,11 @@ export default function optimizeGeometries(
     if (group.length > 0) {
       let geometry = BufferGeometryUtils.mergeGeometries(group, false);
       if (geometry !== null) {
-        let mesh = new THREE.Mesh(
-          geometry,
-          new THREE.MeshPhongMaterial({
-            vertexColors: true,
-            side: THREE.DoubleSide,
-            specular: materialSpecular,
-            shininess: materialShininess
-          })
-        );
+        let mesh = new THREE.Mesh(geometry, makeMaterial("normal", mode, materialSpecular, materialShininess));
         normalMeshes.push(mesh);
         if (mode === "cinematic") {
           mesh.castShadow = true;
-          mesh.receiveShadow = false;
+          mesh.receiveShadow = true; // self-shadowing (normalBias on the lights prevents acne)
         }
         mesh.name = "normal";
       }
@@ -60,18 +113,7 @@ export default function optimizeGeometries(
     if (group.length > 0) {
       let geometry = BufferGeometryUtils.mergeGeometries(group, false);
       if (geometry !== null) {
-        let mesh = new THREE.Mesh(
-          geometry,
-          new THREE.MeshPhongMaterial({
-            vertexColors: true,
-            side: THREE.DoubleSide,
-            specular: materialSpecular,
-            shininess: materialShininess,
-            transparent: true,
-            opacity: 0.2,
-            depthWrite: false
-          })
-        );
+        let mesh = new THREE.Mesh(geometry, makeMaterial("transparent", mode, materialSpecular, materialShininess));
         transparentMeshes.push(mesh);
         if (mode === "cinematic") {
           mesh.castShadow = true;
@@ -85,15 +127,7 @@ export default function optimizeGeometries(
     if (group.length > 0) {
       let geometry = BufferGeometryUtils.mergeGeometries(group, false);
       if (geometry !== null) {
-        let mesh = new THREE.Mesh(
-          geometry,
-          new THREE.MeshPhongMaterial({
-            vertexColors: true,
-            side: THREE.DoubleSide,
-            specular: materialSpecular,
-            shininess: 0
-          })
-        );
+        let mesh = new THREE.Mesh(geometry, makeMaterial("carpet", mode, materialSpecular, materialShininess));
         carpetMeshes.push(mesh);
         if (mode === "cinematic") {
           mesh.castShadow = false;

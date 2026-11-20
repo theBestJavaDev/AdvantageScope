@@ -74,6 +74,7 @@ export default class ResizableInstancedMesh {
 
         this.meshes[i] = new THREE.InstancedMesh(this.sources[i].geometry, this.sources[i].material, this.count);
         this.meshes[i]!.castShadow = this.castShadow[i];
+        this.meshes[i]!.receiveShadow = this.castShadow[i]; // overlays (swerve canvas) don't take shadows
         this.meshes[i]!.frustumCulled = false;
         this.parent.add(this.meshes[i]!);
       });

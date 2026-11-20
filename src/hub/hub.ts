@@ -31,7 +31,7 @@ import { NT4Publisher, NT4PublisherStatus } from "./dataSources/nt4/NT4Publisher
 import NT4Source, { NT4Mode } from "./dataSources/nt4/NT4Source";
 import RLOGServerSource from "./dataSources/rlog/RLOGServerSource";
 import { handleRunsList, rememberRunFolder } from "./runPicker";
-import { maybeApplySimLayout, removeSolversTabs, useRobotModel } from "./simLayout";
+import { maybeApplySimLayout, removeSolversTabs, retryRobotModelCheck, useRobotModel } from "./simLayout";
 
 // Constants
 const STATE_SAVE_PERIOD_MS = 250;
@@ -638,6 +638,7 @@ async function handleMainMessage(message: NamedMessage) {
         let newHasFailed = message.data && message.data.loadFailures.length > 0;
         window.assets = message.data;
         window.tabs.newAssets();
+        retryRobotModelCheck();
 
         // Alert about failed assets
         if (newHasFailed) {

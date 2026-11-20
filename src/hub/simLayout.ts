@@ -112,6 +112,12 @@ const ROBOT_SOURCE_KEYS = [SIM_ROBOT_KEY, "RealOutputs/Field/RobotBelief"];
 const GENERIC_ROBOT_PATH = /Robot_FTCSimpleDriveBase|Robot_FRCKitBot|[\\/]lite[\\/]static[\\/]bundledAssets[\\/]/;
 export const TEAM_CAD = "BioBuzz CAD";
 let askedForCad = false;
+let robotCheckPending = false;
+
+/** Called when the asset list arrives: a sim log that opened first still gets the team CAD. */
+export function retryRobotModelCheck() {
+  if (robotCheckPending && !window.preferences?.plainMode) checkRobotModel();
+}
 
 /** Sets the robot model on the 3D tabs' robot + ghost sources for this sim log. */
 export function useRobotModel(model: string) {
@@ -138,7 +144,11 @@ export function useRobotModel(model: string) {
  */
 function checkRobotModel() {
   const robots = window.assets?.robots;
-  if (robots === undefined) return;
+  if (robots === undefined) {
+    robotCheckPending = true; // assets not here yet: retried from `retryRobotModelCheck`
+    return;
+  }
+  robotCheckPending = false;
   const isTeamCad = (name: string | undefined) => {
     const robot = robots.find((r) => r.name === name);
     return (

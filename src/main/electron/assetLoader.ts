@@ -57,7 +57,14 @@ export function loadAssets(): AdvantageScopeAssets {
   // official assets `npm install` already fetched for the Lite build (e.g. the 2026-2027 FTC field). Those come
   // from FIRST's field CAD via AdvantageScope's asset release and must not be committed or redistributed here.
   const seen = new Set<string>();
-  [getUserAssetsPath(), AUTO_ASSETS, BUNDLED_ASSETS, DOWNLOADED_LITE_ASSETS].forEach((parentFolder) => {
+  // Also read the team's models from the regular AdvantageScope install (e.g. Robot_BioBuzzV1, the HIVE robots).
+  const advantageScopeUserAssets = path.join(
+    process.env.HOME || process.env.USERPROFILE || "",
+    process.platform === "win32" ? "AppData/Roaming" : "Library/Application Support",
+    "AdvantageScope",
+    "userAssets"
+  );
+  [getUserAssetsPath(), advantageScopeUserAssets, AUTO_ASSETS, BUNDLED_ASSETS, DOWNLOADED_LITE_ASSETS].forEach((parentFolder) => {
     if (!fs.existsSync(parentFolder)) return;
     fs.readdirSync(parentFolder, { withFileTypes: true })
       .sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0)) // Inverse order so newer versions take priority
