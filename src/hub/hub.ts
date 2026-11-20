@@ -30,6 +30,7 @@ import FTCDashboardSource from "./dataSources/ftcdashboard/FTCDashboardSource";
 import { NT4Publisher, NT4PublisherStatus } from "./dataSources/nt4/NT4Publisher";
 import NT4Source, { NT4Mode } from "./dataSources/nt4/NT4Source";
 import RLOGServerSource from "./dataSources/rlog/RLOGServerSource";
+import { handleRunsList, rememberRunFolder } from "./runPicker";
 import { maybeApplySimLayout, removeSolversTabs, useRobotModel } from "./simLayout";
 
 // Constants
@@ -351,6 +352,7 @@ function startHistorical(path: string, clear = true, merge = false) {
     }
   };
 
+  rememberRunFolder(path); // SolversScope: the Multi Field run picker starts in this folder
   let source = new HistoricalDataSource();
   let sourceEntry = { source: source, path: path, progress: 0, progressIncluded: true } as {
     source: HistoricalDataSource;
@@ -798,6 +800,11 @@ async function handleMainMessage(message: NamedMessage) {
         const runs = beginCompare(message.data.files as string[]);
         runs.forEach((file, index) => startHistorical(file, index === 0, runs.length > 1));
       }
+      break;
+
+    case "runs-list":
+      // SolversScope Multi Field run picker: the runs in a folder (src/hub/runPicker.ts)
+      handleRunsList(message.data);
       break;
 
     case "load-runs-into-tab":

@@ -58,7 +58,7 @@ export default class MultiFieldRenderer implements TabRenderer {
     emptyTitle.className = "multifield-empty-title";
     emptyTitle.textContent = "No run here yet";
     const emptyText = document.createElement("div");
-    emptyText.textContent = "Press “Choose run…” under this field. Pick one log, or up to 3 to compare them.";
+    emptyText.textContent = "Press “Choose run…” under this field and tick a run (or up to 3 to compare).";
     empty.append(emptyTitle, emptyText);
     element.append(view, label, empty);
     this.GRID.appendChild(element);

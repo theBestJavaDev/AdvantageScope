@@ -7,6 +7,7 @@
 
 import { MultiFieldRendererCommand } from "../../shared/renderers/MultiFieldRenderer";
 import { createUUID } from "../../shared/util";
+import { openRunPicker } from "../runPicker";
 import Field3dController from "./Field3dController";
 import TabController from "./TabController";
 
@@ -44,12 +45,12 @@ export default class MultiFieldController implements TabController {
     this.ADD_BUTTON.addEventListener("click", () => this.addPane());
     const compare = document.createElement("button");
     compare.className = "multifield-button";
-    compare.textContent = "Load 2–3 runs at once…";
-    compare.title = "Pick two or three log files: each gets its own field";
-    compare.addEventListener("click", () => window.sendMainMessage("open-compare-runs"));
+    compare.textContent = "Choose runs…";
+    compare.title = "Tick up to 3 runs: this tab shows exactly those, one field each";
+    compare.addEventListener("click", () => openRunPicker(this.UUID, 0));
     const hint = document.createElement("span");
     hint.className = "multifield-hint";
-    hint.textContent = "Press “Choose run…” and pick one log, or up to 3 to show them all side by side.";
+    hint.textContent = "Press “Choose runs…” and tick up to 3 runs to show them side by side.";
     const help = document.createElement("button");
     help.className = "multifield-help";
     help.textContent = "?";
@@ -107,9 +108,7 @@ export default class MultiFieldController implements TabController {
     };
     showDetails(false);
     details.addEventListener("click", () => showDetails(!pane.detailsOpen));
-    choose.addEventListener("click", () =>
-      window.sendMainMessage("choose-run-for-field", { uuid: this.UUID, pane: this.panes.indexOf(pane) })
-    );
+    choose.addEventListener("click", () => openRunPicker(this.UUID, this.panes.indexOf(pane)));
     remove.addEventListener("click", () => this.removePane(this.panes.indexOf(pane)));
     this.updateButtons();
   }

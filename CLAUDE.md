@@ -103,8 +103,11 @@ SolversScope watches). Per-computer setup:
   `controller3` / `renderer3` templates). File → Compare Runs (Ctrl+Alt+O) or the tab's button loads up to 3 logs
   merged under `/Log0..2` (aligned at the auto start) and builds one pane per run (`src/hub/compareRuns.ts`).
   `sendAllPreferences` finds File/App menu items by label, so new menu items are safe.
-  Each field has a "Choose run…" button (`choose-run-for-field` → `load-run-into-field` → `queueRunForField`):
-  the log is added to what's loaded and that field is set up for it. Pose lists hide behind "Details".
+  "Choose run…" / "Choose runs…" open an in-app run picker (`src/hub/runPicker.ts`, folder listing in
+  `src/main/electron/runsFolder.ts`): checkboxes, up to 3, starts in the last opened log's folder or a
+  `<home>/*/TeamCode/build/sim`. One run fills that field (`load-run-into-field` → `queueRunForField`); 2–3 make
+  the tab show exactly those (`load-runs-into-tab` → `beginCompare(files, uuid)`). Both go through
+  `deliverChosenRuns` in main.ts. Pose lists hide behind "Details".
 - **User guide:** `www/guide/guide.md` (the one copy; plain language for new members), shown in the app by
   `www/guide/index.html` (Help → How to Use SolversScope, F1; `open-guide` message with a section id, e.g. the
   Multi Field "?" opens `#compare`). Update it when a feature's buttons or wording change. `HOW_TO_USE.md` points to it.

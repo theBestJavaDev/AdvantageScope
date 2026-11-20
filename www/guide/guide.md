@@ -85,21 +85,23 @@ shot.
 Use this to answer "which auto is better?", for example a 2-tip auto next to a 3-tip auto, or red next to blue. Up to
 **three** runs play **in one window, at the same time**, lined up so their autos start together.
 
-**Fastest way:**
+**Easiest way (just tick boxes):**
+
+1. Add a **Multi Field** tab: click **+** at the top right → Multi Field.
+2. Press **Choose runs…**. A list of your runs opens, newest first. Type in the search box to find one.
+3. **Tick** up to three runs and press **Show**. The tab shows exactly the runs you ticked, one field each.
+
+To swap just one field, press **Choose run…** under that field and **double-click** a run.
+
+The list starts in your robot code's runs folder. If it's empty or wrong, press **Change folder…** and pick the
+folder with your `.rlog` files. **Browse files instead…** opens the normal Windows file window (there, hold **Ctrl**
+to pick more than one).
+
+**From the File menu:**
 
 1. File → **Compare Runs (up to 3)…** (or Ctrl+Alt+O).
 2. Hold **Ctrl** and click two or three log files, then click Open.
 3. A **Compare** tab opens with one field per run. Press ▶ to play them together.
-
-**From a Multi Field tab:**
-
-1. Add a **Multi Field** tab: click **+** at the top right → Multi Field.
-2. Under the field, press **Choose run…**.
-3. Pick the logs you want to see (hold **Ctrl** to pick up to three) and click Open. The tab shows exactly
-   the runs you picked, one field each.
-
-To swap just one field, press **Choose run…** under that field and pick a single log. **+ Add field** adds an empty
-field.
 
 Each field has its own camera, so you can look at them from different angles. **Details ▸** under a field shows what it
 draws and which field model it uses (you can switch seasons there, e.g. BioBuzz and DECODE). The ✕ removes a field.
