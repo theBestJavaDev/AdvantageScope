@@ -145,6 +145,22 @@ export default class Field3dController implements TabController {
     if (robotList.length === 0) {
       robotList.push("KitBot");
     }
+    // SolversScope: keep models a source already uses even if they are not loaded (yet). Otherwise the
+    // source list swaps in the first robot for good, e.g. the robot CAD drawn at each sim HIVE's pose
+    // when the HIVE models (user assets) are missing or load late. A missing model just draws nothing.
+    // Installed models of the other program (FRC/FTC) are still swapped, as before.
+    const installed = new Set(window.assets.robots.map((robot) => robot.name));
+    this.sourceList.getState().forEach((item) => {
+      const model = item.options.model;
+      if (
+        (item.type === "robot" || item.type === "ghost") &&
+        model !== undefined &&
+        !installed.has(model) &&
+        !robotList.includes(model)
+      ) {
+        robotList.push(model);
+      }
+    });
     let sourceListValues: SourceListOptionValueConfig[] = robotList.map((name) => {
       return { key: name, display: name };
     });

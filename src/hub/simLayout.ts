@@ -43,28 +43,27 @@ function isUnconfiguredView(tab: TabsState["tabs"][number]): boolean {
 /** The sim layout's 3D field: the 2026-2027 field without its fixed HIVE bars and staged balls. */
 const TIPPING_FIELD_ID = "FTC:BioBuzz Sim Field";
 const HIVE_SOURCE_KEY = "RealOutputs/Field/HiveRed";
-/** HIVE pose sources and the robot models (made by make_field_model.py) that draw them. */
+/** HIVE pose sources and the robot models (made by make_field_model.py) that draw them; a missing one draws nothing. */
 const HIVE_MODELS: Record<string, string> = {
   "RealOutputs/Field/HiveRed": "BioBuzz HIVE Red",
   "RealOutputs/Field/HiveBlue": "BioBuzz HIVE Blue"
 };
 
 /**
- * Without the HIVE models a robot source falls back to the default robot model, which then floats
- * at each HIVE's pose (a robot drawn inside each HIVE). Hide those sources when the models are missing.
+ * Puts the HIVE model names back on the HIVE pose sources. Older builds swapped in the robot CAD when
+ * the HIVE models were missing or loaded late (a robot drawn inside each HIVE), and that was saved.
  */
-function hideMissingHiveModels() {
-  const robots = new Set((window.assets?.robots ?? []).map((robot) => robot.name));
+function restoreHiveModels() {
   const state = window.tabs.saveState();
   let changed = false;
   for (const tab of state.tabs) {
     if (tab.type !== TabType.Field3d) continue;
-    const controller = tab.controller as { sources?: { logKey: string; visible?: boolean }[] } | null;
+    const controller = tab.controller as { sources?: { logKey: string; options?: Record<string, string> }[] } | null;
     if (controller === null || !Array.isArray(controller.sources)) continue;
     for (const source of controller.sources) {
       const model = HIVE_MODELS[source.logKey];
-      if (model !== undefined && !robots.has(model) && source.visible !== false) {
-        source.visible = false;
+      if (model !== undefined && source.options !== undefined && source.options.model !== model) {
+        source.options.model = model;
         changed = true;
       }
     }
@@ -176,7 +175,7 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
   }
 
   useTippingField();
-  hideMissingHiveModels();
+  restoreHiveModels();
   if (window.preferences?.plainMode) removeSolversTabs();
   else addAutoCheckTab();
 
