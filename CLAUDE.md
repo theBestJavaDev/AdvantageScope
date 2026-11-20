@@ -94,6 +94,10 @@ SolversScope watches). Per-computer setup:
   saved through the `export-telemetry-report` main-process message.
 - **Plain mode:** View → Plain AdvantageScope Mode (`plainMode` pref) hides the SolversScope tabs from New Tab, closes
   open ones, and skips the Auto Check tab on sim logs (`SOLVERS_TAB_TYPES` in `TabType.ts`, `removeSolversTabs` in `simLayout.ts`).
+- **Random match:** the robot-code sim is a perfect robot, so Auto Check also flies each logged shot once with a fresh
+  draw of the error model (`simulateRandomMatch`) and writes the misses to `/SolversSim/AutoCheck/Match/*`
+  (POLLEN positions + 4 red trail slots); `simLayout.addMatchMissesSource` adds them to the sim 3D view. "🎲 New
+  random match" rerolls. Don't draw misses as red balls: BioBuzz has red NECTAR.
 - **Auto Check tuning:** each shot also gets where it crosses the CELL mouth (with spin) and the exit speed that
   centers it (`centeringExitSpeed`), with its hit chance under match error ("Tune" column, "With tuned speeds" card).
 - **3D backdrop:** `src/shared/renderers/field3d/SolversArena.ts` (dome, lit floor, gold grid, fog in the theme

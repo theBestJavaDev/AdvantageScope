@@ -71,6 +71,41 @@ function restoreHiveModels() {
   if (changed) window.tabs.restoreState(state);
 }
 
+/** Auto Check's random match: missed shots (as POLLEN) and their red trails (AutoCheckController.MATCH_MISSES_KEY). */
+const MATCH_MISSES_KEY = "/SolversSim/AutoCheck/Match/Misses";
+const MATCH_TRAIL_KEYS = [0, 1, 2, 3].map((i) => "/SolversSim/AutoCheck/Match/Trail" + i);
+
+/** Adds the random match's missed shots to the sim 3D views (once), so misses show on the field. */
+function addMatchMissesSource() {
+  const state = window.tabs.saveState();
+  let changed = false;
+  for (const tab of state.tabs) {
+    if (tab.type !== TabType.Field3d) continue;
+    const controller = tab.controller as { sources?: Record<string, unknown>[] } | null;
+    if (controller === null || !Array.isArray(controller.sources)) continue;
+    if (!controller.sources.some((source) => source.logKey === HIVE_SOURCE_KEY)) continue;
+    if (controller.sources.some((source) => source.logKey === MATCH_MISSES_KEY)) continue;
+    controller.sources.push({
+      type: "gamePiece",
+      logKey: MATCH_MISSES_KEY,
+      logType: "Translation3d[]",
+      visible: true,
+      options: { variant: "Pollen" }
+    });
+    for (const key of MATCH_TRAIL_KEYS) {
+      controller.sources.push({
+        type: "trajectory",
+        logKey: key,
+        logType: "Translation3d[]",
+        visible: true,
+        options: { color: "#ff3b30", size: "bold" }
+      });
+    }
+    changed = true;
+  }
+  if (changed) window.tabs.restoreState(state);
+}
+
 /** Robot pose sources the team's CAD draws (true pose + belief ghost). */
 const ROBOT_SOURCE_KEYS = [SIM_ROBOT_KEY, "RealOutputs/Field/RobotBelief"];
 /** Bundled / downloaded stock robots: fine, but not the team's robot. */
@@ -239,6 +274,7 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
     removeSolversTabs();
   } else {
     addAutoCheckTab();
+    addMatchMissesSource();
     checkRobotModel();
   }
 

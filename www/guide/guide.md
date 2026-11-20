@@ -131,6 +131,11 @@ see what the auto would really score.
 - **Crosses the mouth:** how far from the middle of the CELL's mouth the ball goes in. "Low" means near the bottom lip.
 - **Tune:** how much to change the exit speed to center that shot, and the chance it would have then.
 
+**This random match:** your robot sim is a perfect robot, so its replay looks the same every time. Auto Check also
+plays a **random match**: every shot once, with fresh random errors, like a real match where some shots just miss.
+Misses show on the **3D Field** with a **red trail** and land where they would really go. Press **🎲 New random
+match** to roll another one; each is different, and over many rolls they average out to the "With match error" card.
+
 The gold box above the table sums it up in one sentence. The error settings it uses come from the **Shot Lab** tab.
 
 > Treat the Tune numbers as a direction ("we're aiming low, aim higher"), then confirm on the real robot.

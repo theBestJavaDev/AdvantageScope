@@ -23,10 +23,10 @@
 
 import { Alliance, HiveCell, getGamePreset, upwardCell } from "./GamePresets";
 import { DEFAULT_ENVIRONMENT, FTC_FIELD, PhysicsEngine, TargetZone } from "./PhysicsEngine";
-import { ShotScenario, runMonteCarlo, targetPlaneHeight } from "./ShotErrorModel";
+import { ShotScenario, runMonteCarlo, sampleShot, simulateSampledShot, targetPlaneHeight } from "./ShotErrorModel";
 import { ShotLabConfig, buildErrorModel, buildGamePiece, measureMiss } from "./ShotLab";
 import { RPM_TO_RAD_PER_SEC, SpinMode, computeLaunchState } from "./ShotLaunch";
-import { Vector3 } from "./vector";
+import { Random, Vector3 } from "./vector";
 
 const DEG = Math.PI / 180;
 
@@ -361,4 +361,81 @@ export function analyzeAutoShots(
     tunedRange90: [percentile(tunedDistribution, 0.05), percentile(tunedDistribution, 0.95)],
     durationMs: Date.now() - start
   };
+}
+
+/** One shot of a random match: whether it went in, and (for misses) where the piece flew. */
+export interface MatchShot {
+  index: number;
+  time: number;
+  hit: boolean;
+  /** Piece path for a miss, sim frame, times relative to the log (empty for a hit). */
+  path: { time: number; position: Vector3 }[];
+}
+
+export interface RandomMatch {
+  seed: number;
+  shots: MatchShot[];
+  inCount: number;
+}
+
+/**
+ * One random match: every logged shot flown once with one random draw of the Shot Lab error model
+ * (plus spin), so some miss the way they would on a real field. Shots fired within `burstGap`
+ * seconds of the one before count as rapid fire (flywheel recovery). Misses keep flying, bouncing
+ * and rolling until they stop, so they can be drawn on the field. Note: the HIVE frame isn't a
+ * collider here, so a miss passes through it.
+ */
+export function simulateRandomMatch(
+  shots: AutoShot[],
+  config: ShotLabConfig,
+  options: Partial<AutoCheckOptions> = {},
+  seed = Date.now(),
+  burstGap = 0.6
+): RandomMatch {
+  const opts = { ...DEFAULT_AUTO_CHECK_OPTIONS, ...options };
+  const model = buildErrorModel(config);
+  const piece = buildGamePiece(config);
+  const rng = new Random(seed);
+  const results: MatchShot[] = [];
+  let burstIndex = 0;
+  shots.forEach((shot, index) => {
+    burstIndex = index > 0 && shot.time - shots[index - 1].time < burstGap ? burstIndex + 1 : 0;
+    const target = targetFor(config, shot.cell);
+    if (target === null) {
+      results.push({ index, time: shot.time, hit: false, path: [] });
+      return;
+    }
+    const exitSpeed = Math.hypot(
+      shot.velocity[0] - shot.robotVelocity[0],
+      shot.velocity[1] - shot.robotVelocity[1],
+      shot.velocity[2]
+    );
+    const spinRpm =
+      opts.spinRpm === "rolling" ? exitSpeed / piece.radius / RPM_TO_RAD_PER_SEC : Math.max(0, opts.spinRpm);
+    const scenario = scenarioForShot(shot, config, { mode: opts.spinMode, rpm: spinRpm }, target);
+    const sample = sampleShot(scenario, model, rng, burstIndex);
+    const trajectory = simulateSampledShot(sample, scenario, model, rng, {
+      duration: 4,
+      timeStep: 0.002,
+      sampleInterval: 0.02,
+      stopOnTargetHit: false,
+      stopAfterLanding: false,
+      stopWhenAtRest: true,
+      crossingHeight: targetPlaneHeight(target)
+    });
+    const hit = trajectory.target?.hit ?? false;
+    const t0 = trajectory.samples.length > 0 ? trajectory.samples[0].time : 0;
+    results.push({
+      index,
+      time: shot.time,
+      hit,
+      path: hit
+        ? []
+        : trajectory.samples.map((sampleState) => ({
+            time: shot.time + sampleState.time - t0,
+            position: [...sampleState.position] as Vector3
+          }))
+    });
+  });
+  return { seed, shots: results, inCount: results.filter((r) => r.hit).length };
 }

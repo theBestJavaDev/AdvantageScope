@@ -5,7 +5,13 @@
 // license that can be found in the LICENSE file
 // at the root directory of this project.
 
-import { AutoCheckOptions, AutoCheckResult, AutoShot } from "../../shared/physics/AutoShotCheck";
+import {
+  AutoCheckOptions,
+  AutoCheckResult,
+  AutoShot,
+  RandomMatch,
+  simulateRandomMatch
+} from "../../shared/physics/AutoShotCheck";
 import { simToLogTranslation } from "../../shared/physics/GamePresets";
 import { ERROR_SOURCES } from "../../shared/physics/ShotErrorModel";
 import { SpinMode } from "../../shared/physics/ShotLaunch";
@@ -18,6 +24,13 @@ import { getSharedShotLabConfig } from "./SimForm";
 import TabController from "./TabController";
 
 const LOG_PREFIX = "/SolversSim/AutoCheck";
+/** Where a random match's missed shots are (Translation3d[]); the sim 3D view draws them as POLLEN. */
+export const MATCH_MISSES_KEY = LOG_PREFIX + "/Match/Misses";
+/** Red trails behind missed shots in flight (Translation3d[] each); a burst's misses take turns. */
+export const MATCH_TRAIL_KEYS = [0, 1, 2, 3].map((i) => LOG_PREFIX + "/Match/Trail" + i);
+const MATCH_STEP = 0.02;
+/** How long a trail stays after the shot (it ends at landing if that's sooner), s. */
+const TRAIL_SECONDS = 1.2;
 const AUTO_CHECK_FIELDS = [
   "RealOutputs/Sim/Launch",
   "RealOutputs/Sim/Pollen/transitions",
@@ -47,6 +60,9 @@ export default class AutoCheckController implements TabController {
   private SAMPLES: HTMLSelectElement;
   private SPIN: HTMLSelectElement;
   private RERUN: HTMLButtonElement;
+  private REROLL: HTMLButtonElement;
+  /** The last check's shots and settings, so a new random match needs no new check. */
+  private lastRun: { shots: AutoShot[]; options: Partial<AutoCheckOptions> } | null = null;
   private state: State = { samples: 200, spin: "backspin" };
 
   private command: AutoCheckRendererCommand = {
@@ -75,6 +91,8 @@ export default class AutoCheckController implements TabController {
       this.run(true);
     });
     this.RERUN.addEventListener("click", () => this.run(true));
+    this.REROLL = root.getElementsByClassName("autocheck-reroll")[0] as HTMLButtonElement;
+    this.REROLL.addEventListener("click", () => this.newRandomMatch());
     this.syncInputs();
     this.schedule();
   }
@@ -191,6 +209,8 @@ export default class AutoCheckController implements TabController {
         };
         setLatestAutoCheck({ logKey: key, result, errorSources, spinLabel, samples: this.state.samples });
         this.writeToLog(result);
+        this.lastRun = { shots, options };
+        this.newRandomMatch();
       })
       .catch(() => this.setStatus("The check failed. Try Re-run.", "warn"))
       .finally(() => {
@@ -229,6 +249,62 @@ export default class AutoCheckController implements TabController {
     window.sidebar.refresh();
   }
 
+  /**
+   * Plays one random match: each shot flown once with fresh random errors. Misses are written to the
+   * log as moving pieces (MATCH_MISSES_KEY) with red trails (MATCH_TRAIL_KEYS) for the 3D view.
+   */
+  private newRandomMatch() {
+    if (this.lastRun === null || !isRobotSimLog()) return;
+    const match = simulateRandomMatch(this.lastRun.shots, getSharedShotLabConfig(), this.lastRun.options);
+    this.writeMatch(match);
+    this.command = {
+      ...this.command,
+      match: {
+        inCount: match.inCount,
+        total: match.shots.length,
+        missed: match.shots.filter((s) => !s.hit).map((s) => s.index + 1)
+      }
+    };
+  }
+
+  private writeMatch(match: RandomMatch) {
+    const log = window.log;
+    log.deleteFieldsWithPrefix(LOG_PREFIX + "/Match");
+    let inSoFar = 0;
+    match.shots.forEach((s) => {
+      if (s.hit) inSoFar++;
+      log.putString(LOG_PREFIX + "/Match/Result", s.time, s.hit ? "IN" : "MISS");
+      log.putNumber(LOG_PREFIX + "/Match/InSoFar", s.time, inSoFar);
+    });
+    // Missed pieces over time: in flight, then resting where they stopped. Each also gets a red trail
+    // while it flies (until it lands, at most TRAIL_SECONDS), in one of the trail slots.
+    const misses = match.shots.filter((s) => s.path.length > 0);
+    if (misses.length > 0) {
+      const end = Math.max(log.getTimestampRange()[1], ...misses.map((s) => s.path[s.path.length - 1].time));
+      const trailEnds = misses.map((s) => s.time + Math.min(TRAIL_SECONDS, firstLanding(s.path) - s.time));
+      const trailWasEmpty = MATCH_TRAIL_KEYS.map(() => false);
+      for (let t = misses[0].time; t <= end + 1e-9; t += MATCH_STEP) {
+        const positions = misses.filter((s) => s.time <= t).map((s) => simToLogTranslation(positionAt(s.path, t)));
+        log.putTranslation3dArray(MATCH_MISSES_KEY, t, positions);
+        MATCH_TRAIL_KEYS.forEach((key, slot) => {
+          // The newest miss in this slot whose trail is still showing
+          let trail: [number, number, number][] = [];
+          misses.forEach((s, i) => {
+            if (i % MATCH_TRAIL_KEYS.length !== slot || t < s.time || t > trailEnds[i]) return;
+            trail = s.path
+              .filter((p) => p.time <= t)
+              .map((p) => simToLogTranslation([...p.position] as [number, number, number]))
+              .concat([simToLogTranslation(positionAt(s.path, t))]);
+          });
+          if (trail.length === 0 && trailWasEmpty[slot]) return; // already empty
+          trailWasEmpty[slot] = trail.length === 0;
+          log.putTranslation3dArray(key, t, trail);
+        });
+      }
+    }
+    window.sidebar.refresh();
+  }
+
   saveState(): unknown {
     return this.state;
   }
@@ -259,4 +335,25 @@ export default class AutoCheckController implements TabController {
   getCommand(): AutoCheckRendererCommand {
     return this.command;
   }
+}
+
+/** When a missed piece first comes down to the floor (end of its flight). */
+function firstLanding(path: { time: number; position: [number, number, number] }[]): number {
+  for (let i = 1; i < path.length; i++) {
+    if (path[i].position[2] < 0.06 && path[i].position[2] <= path[i - 1].position[2]) return path[i].time;
+  }
+  return path[path.length - 1].time;
+}
+
+/** Position along a sampled path at time t (held at the ends). */
+function positionAt(path: { time: number; position: [number, number, number] }[], t: number): [number, number, number] {
+  if (t <= path[0].time) return [...path[0].position];
+  const last = path[path.length - 1];
+  if (t >= last.time) return [...last.position];
+  let i = 1;
+  while (i < path.length && path[i].time < t) i++;
+  const a = path[i - 1];
+  const b = path[i];
+  const f = (t - a.time) / Math.max(1e-9, b.time - a.time);
+  return [0, 1, 2].map((k) => a.position[k] + (b.position[k] - a.position[k]) * f) as [number, number, number];
 }

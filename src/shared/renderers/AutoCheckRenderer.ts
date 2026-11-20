@@ -13,6 +13,8 @@ export type AutoCheckRendererCommand = {
   result: AutoCheckResult | null;
   errorSources: string[];
   spinLabel: string;
+  /** The random match shown on the 3D field (missed shots as red balls), or null before the first check. */
+  match?: { inCount: number; total: number; missed: number[] } | null;
 };
 
 function pct(x: number): string {
@@ -54,7 +56,8 @@ export default class AutoCheckRenderer implements TabRenderer {
       command.status,
       command.result?.durationMs,
       command.result?.expectedIn,
-      command.spinLabel
+      command.spinLabel,
+      command.match
     ]);
     if (key === this.lastKey) return;
     this.lastKey = key;
@@ -100,6 +103,17 @@ export default class AutoCheckRenderer implements TabRenderer {
       "expected · 90% range " + r.range90[0] + "–" + r.range90[1],
       r.expectedIn >= 0.85 * n ? "good" : r.expectedIn < 0.6 * n ? "bad" : ""
     );
+    if (command.match) {
+      const m = command.match;
+      card(
+        "This random match",
+        m.inCount + " / " + m.total,
+        m.missed.length === 0
+          ? "every shot went in this time · 🎲 to roll another"
+          : "missed #" + m.missed.join(", #") + " · red trails on the 3D field",
+        m.missed.length === 0 ? "good" : ""
+      );
+    }
     if (r.tunedExpectedIn > r.expectedIn + 0.05) {
       card(
         "With tuned speeds",
