@@ -1381,6 +1381,10 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
       select2DCameraPopup(window, message.data.position, message.data.selectedIndex);
       break;
 
+    case "open-guide":
+      openGuide(typeof message.data === "string" ? message.data : undefined);
+      break;
+
     case "open-compare-runs":
       compareRunsDialog(window);
       break;
@@ -2863,6 +2867,14 @@ function setupMenu() {
       role: "help",
       submenu: [
         {
+          label: "How to Use SolversScope",
+          accelerator: "F1",
+          click() {
+            openGuide();
+          }
+        },
+        { type: "separator" },
+        {
           label: "Report a Problem",
           click() {
             shell.openExternal("https://github.com/" + GITHUB_REPOSITORY + "/issues");
@@ -2901,6 +2913,37 @@ function setupMenu() {
   BrowserWindow.getAllWindows().forEach((w) => {
     if (!hubWindows.includes(w)) w.setMenu(null);
   });
+}
+
+let guideWindow: BrowserWindow | null = null;
+
+/** SolversScope: opens the "How to Use SolversScope" guide (www/guide/guide.md), at a section if given. */
+function openGuide(section?: string) {
+  const hash = section !== undefined && /^[a-z0-9-]+$/.test(section) ? section : undefined;
+  if (guideWindow !== null && !guideWindow.isDestroyed()) {
+    guideWindow.loadFile(path.join(__dirname, "../www/guide/index.html"), { hash });
+    guideWindow.show();
+    guideWindow.focus();
+    return;
+  }
+  guideWindow = new BrowserWindow({
+    width: 900,
+    height: 900,
+    minWidth: 400,
+    minHeight: 300,
+    title: "How to Use SolversScope",
+    icon: WINDOW_ICON,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0b0a06" : "#f3eed3",
+    show: false
+  });
+  guideWindow.setMenu(null);
+  guideWindow.once("ready-to-show", () => guideWindow?.show());
+  guideWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: "deny" };
+  });
+  guideWindow.on("closed", () => (guideWindow = null));
+  guideWindow.loadFile(path.join(__dirname, "../www/guide/index.html"), { hash });
 }
 
 /** Creates the "About SolversScope" window. */

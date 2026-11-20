@@ -1,0 +1,265 @@
+<!doctype html>
+<!--
+  Copyright (c) 2021-2026 Littleton Robotics & FTC Team 23511 Seattle Solvers
+  http://github.com/Mechanical-Advantage
+
+  Use of this source code is governed by a BSD
+  license that can be found in the LICENSE file
+  at the root directory of this project.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How to Use SolversScope</title>
+    <!-- SolversScope theme tokens + bundled fonts -->
+    <link rel="stylesheet" href="../solvers-theme.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: var(--ss-window, #0b0a06);
+        color: var(--ss-text, #fcf9de);
+        font-family: var(--ss-font-body, "Inter", sans-serif);
+        font-size: 15px;
+        line-height: 1.6;
+        overflow-y: auto;
+        height: auto;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 28px 28px 80px;
+      }
+      header.brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      header.brand img {
+        width: 34px;
+        height: 34px;
+      }
+      header.brand span {
+        font-family: var(--ss-font-display, sans-serif);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: var(--ss-text-dim, #a69f7c);
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--ss-font-display, sans-serif);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        line-height: 1.25;
+      }
+      h1 {
+        font-size: 28px;
+        color: var(--ss-accent, #f2ce00);
+        margin: 4px 0 16px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 40px 0 12px;
+        padding: 6px 0 6px 12px;
+        border-left: 4px solid var(--ss-accent, #f2ce00);
+        text-transform: uppercase;
+      }
+      p {
+        margin: 10px 0;
+      }
+      a {
+        color: var(--ss-accent, #f2ce00);
+      }
+      strong {
+        color: var(--ss-text, #fcf9de);
+      }
+      code {
+        font-family: var(--ss-font-mono, monospace);
+        font-size: 13px;
+        padding: 1px 6px;
+        background: var(--ss-surface-2, #262315);
+        border: 1px solid var(--ss-border, #fcf9de21);
+        word-break: break-all;
+      }
+      ul,
+      ol {
+        padding-left: 24px;
+      }
+      li {
+        margin: 4px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 14px;
+      }
+      th {
+        text-align: left;
+        font-family: var(--ss-font-display, sans-serif);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ss-text-dim, #a69f7c);
+        border-bottom: 1px solid var(--ss-accent, #f2ce00);
+        padding: 6px 8px;
+      }
+      td {
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--ss-border, #fcf9de21);
+        vertical-align: top;
+      }
+      blockquote {
+        margin: 14px 0;
+        padding: 10px 14px;
+        border-left: 3px solid var(--ss-accent, #f2ce00);
+        background: color-mix(in srgb, var(--ss-accent, #f2ce00) 8%, transparent);
+      }
+      blockquote p {
+        margin: 0;
+      }
+      .error {
+        color: var(--ss-bad, #e5484d);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="brand">
+        <img src="../symbols/solvers-logo.svg" alt="" />
+        <span>SolversScope · Seattle Solvers 23511</span>
+      </header>
+      <article id="guide">Loading the guide…</article>
+    </main>
+    <script>
+      // Small Markdown reader for guide.md (headings, paragraphs, lists, tables, quotes, links, code, bold,
+      // italics, and raw <a id> anchors). guide.md is the one copy of the guide; it also reads well on GitHub.
+      function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+      function inline(text) {
+        const codes = [];
+        let out = text.replace(/`([^`]+)`/g, (_, code) => {
+          codes.push("<code>" + escapeHtml(code) + "</code>");
+          return "\u0000" + (codes.length - 1) + "\u0000";
+        });
+        out = escapeHtml(out)
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[\s(])_([^_]+)_(?=[\s.,;:)!?]|$)/g, "$1<em>$2</em>")
+          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, href) => {
+            const external = /^https?:/.test(href);
+            return '<a href="' + href + '"' + (external ? ' target="_blank"' : "") + ">" + label + "</a>";
+          });
+        return out.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[Number(i)]);
+      }
+      function render(markdown) {
+        const lines = markdown.replace(/\r/g, "").split("\n");
+        const html = [];
+        let i = 0;
+        const isTableRow = (line) => /^\s*\|.*\|\s*$/.test(line);
+        const cells = (line) =>
+          line
+            .trim()
+            .replace(/^\||\|$/g, "")
+            .split("|")
+            .map((cell) => cell.trim());
+        while (i < lines.length) {
+          const line = lines[i];
+          if (line.trim() === "") {
+            i++;
+            continue;
+          }
+          if (/^\s*<a id="[^"]+"><\/a>\s*$/.test(line)) {
+            html.push(line.trim());
+            i++;
+            continue;
+          }
+          const heading = /^(#{1,3})\s+(.*)$/.exec(line);
+          if (heading) {
+            const level = heading[1].length;
+            html.push("<h" + level + ">" + inline(heading[2]) + "</h" + level + ">");
+            i++;
+            continue;
+          }
+          if (isTableRow(line) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+            const head = cells(line);
+            i += 2;
+            const rows = [];
+            while (i < lines.length && isTableRow(lines[i])) rows.push(cells(lines[i++]));
+            html.push(
+              "<table><thead><tr>" +
+                head.map((h) => "<th>" + inline(h) + "</th>").join("") +
+                "</tr></thead><tbody>" +
+                rows.map((r) => "<tr>" + r.map((c) => "<td>" + inline(c) + "</td>").join("") + "</tr>").join("") +
+                "</tbody></table>"
+            );
+            continue;
+          }
+          if (/^>\s?/.test(line)) {
+            const quote = [];
+            while (i < lines.length && /^>\s?/.test(lines[i])) quote.push(lines[i++].replace(/^>\s?/, ""));
+            html.push("<blockquote><p>" + inline(quote.join(" ")) + "</p></blockquote>");
+            continue;
+          }
+          const listItem = /^(\s*)([-*]|\d+\.)\s+(.*)$/;
+          if (listItem.test(line)) {
+            // Nested lists by indentation; continuation lines join the item above
+            const stack = [];
+            let out = "";
+            while (i < lines.length && (listItem.test(lines[i]) || /^\s{2,}\S/.test(lines[i]))) {
+              const m = listItem.exec(lines[i]);
+              if (!m) {
+                out += " " + inline(lines[i].trim());
+                i++;
+                continue;
+              }
+              const indent = m[1].length;
+              const tag = /\d/.test(m[2]) ? "ol" : "ul";
+              while (stack.length > 0 && indent < stack[stack.length - 1].indent) {
+                out += "</li></" + stack.pop().tag + ">";
+              }
+              if (stack.length === 0 || indent > stack[stack.length - 1].indent) {
+                out += "<" + tag + ">";
+                stack.push({ indent, tag });
+              } else {
+                out += "</li>";
+              }
+              out += "<li>" + inline(m[3]);
+              i++;
+            }
+            while (stack.length > 0) out += "</li></" + stack.pop().tag + ">";
+            html.push(out);
+            continue;
+          }
+          const paragraph = [];
+          while (
+            i < lines.length &&
+            lines[i].trim() !== "" &&
+            !/^(#{1,3})\s/.test(lines[i]) &&
+            !isTableRow(lines[i]) &&
+            !/^>\s?/.test(lines[i]) &&
+            !listItem.test(lines[i])
+          ) {
+            paragraph.push(lines[i++].trim());
+          }
+          html.push("<p>" + inline(paragraph.join(" ")) + "</p>");
+        }
+        return html.join("\n");
+      }
+      fetch("guide.md")
+        .then((response) => response.text())
+        .then((markdown) => {
+          document.getElementById("guide").innerHTML = render(markdown);
+          if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+        })
+        .catch((error) => {
+          document.getElementById("guide").innerHTML =
+            '<p class="error">Could not load the guide (' + escapeHtml(String(error)) + ").</p>";
+        });
+    </script>
+  </body>
+</html>

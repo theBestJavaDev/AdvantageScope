@@ -50,7 +50,12 @@ export default class MultiFieldController implements TabController {
     const hint = document.createElement("span");
     hint.className = "multifield-hint";
     hint.textContent = "Each field plays one run. Press “Choose run…” on a field to put a log in it.";
-    toolbar.append(this.ADD_BUTTON, compare, hint);
+    const help = document.createElement("button");
+    help.className = "multifield-help";
+    help.textContent = "?";
+    help.title = "How to compare runs (opens the guide)";
+    help.addEventListener("click", () => window.sendMainMessage("open-guide", "compare"));
+    toolbar.append(this.ADD_BUTTON, compare, hint, help);
     this.PANES = document.createElement("div");
     this.PANES.className = "multifield-panes";
     root.append(toolbar, this.PANES);

@@ -1381,3 +1381,20 @@ button.multifield-details:hover {
 div.multifield-pane-controls[hidden] {
   display: none;
 }
+
+button.multifield-help {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--ss-accent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ss-accent);
+  font-weight: 700;
+  cursor: pointer;
+  flex: none;
+}
+
+button.multifield-help:hover {
+  background: var(--ss-accent);
+  color: #0b0a06;
+}

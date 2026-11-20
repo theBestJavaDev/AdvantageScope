@@ -105,6 +105,9 @@ SolversScope watches). Per-computer setup:
   `sendAllPreferences` finds File/App menu items by label, so new menu items are safe.
   Each field has a "Choose run…" button (`choose-run-for-field` → `load-run-into-field` → `queueRunForField`):
   the log is added to what's loaded and that field is set up for it. Pose lists hide behind "Details".
+- **User guide:** `www/guide/guide.md` (the one copy; plain language for new members), shown in the app by
+  `www/guide/index.html` (Help → How to Use SolversScope, F1; `open-guide` message with a section id, e.g. the
+  Multi Field "?" opens `#compare`). Update it when a feature's buttons or wording change. `HOW_TO_USE.md` points to it.
 - **Keep it simple for new members:** prefer buttons that do the whole job (Choose run…, Compare Runs) over
   drag-and-drop, plain-language status text, and views that show results on open (Shot Lab runs once on open).
 - **Theme:** black and gold by default. "Match System" (the old default) also shows dark; only Preferences → Light
