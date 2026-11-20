@@ -92,6 +92,7 @@ import {
 } from "./betaUtil";
 import { getOwletDownloadStatus, startOwletDownloadLoop } from "./owletDownloadLoop";
 import { checkHootIsPro, convertHoot, CTRE_LICENSE_URL } from "./owletInterface";
+import { promptRobotCad } from "./robotCad";
 
 // Dynamically load lzma-native to handle platforms without prebuilt binaries
 let lzma: typeof import("lzma-native") | null = null;
@@ -160,7 +161,7 @@ function sendMessage(window: BrowserWindow, name: string, data?: any): boolean {
 /** Sends the current preferences to all windows (including USB menu bar setting) */
 function sendAllPreferences() {
   let data: Preferences = jsonfile.readFileSync(PREFS_FILENAME);
-  nativeTheme.themeSource = data.theme;
+  nativeTheme.themeSource = solversThemeSource(data.theme);
   hubWindows.forEach((window) => {
     if (!window.isDestroyed()) {
       sendMessage(window, "set-preferences", data);
@@ -1378,6 +1379,16 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
       select2DCameraPopup(window, message.data.position, message.data.selectedIndex);
       break;
 
+    case "prompt-robot-cad":
+      // SolversScope: sim log drawn with a generic robot; ask for the team's CAD (see robotCad.ts)
+      promptRobotCad(window).then(async (name) => {
+        if (name === null) return;
+        advantageScopeAssets = await loadAssets();
+        sendAssets();
+        sendMessage(window, "robot-cad-installed", name);
+      });
+      break;
+
     case "export-telemetry-report":
       // SolversScope: Telemetry tab's Markdown report ({ fileName, content })
       dialog
@@ -1520,6 +1531,14 @@ setInterval(() => {
     socket.write(RLOG_HEARTBEAT_DATA);
   });
 }, RLOG_HEARTBEAT_DELAY_MS);
+
+/**
+ * SolversScope is black and gold: "Match System" (the old default, still in saved prefs) shows the
+ * dark theme too. Only an explicit "Always Light" gives the light theme.
+ */
+function solversThemeSource(theme: Preferences["theme"]): "light" | "dark" {
+  return theme === "light" ? "light" : "dark";
+}
 
 /** Shows a popup to create a new tab on a hub window. */
 function newTabPopup(window: BrowserWindow, rect: ButtonRect) {
@@ -3909,14 +3928,14 @@ app.whenReady().then(async () => {
   }
   if (!fs.existsSync(PREFS_FILENAME)) {
     jsonfile.writeFileSync(PREFS_FILENAME, prefs);
-    nativeTheme.themeSource = prefs.theme;
+    nativeTheme.themeSource = solversThemeSource(prefs.theme);
   } else {
     mergePreferences(prefs, jsonfile.readFileSync(PREFS_FILENAME));
     if (prefs.userAssetsFolder !== null && !fs.existsSync(prefs.userAssetsFolder)) {
       prefs.userAssetsFolder = null;
     }
     jsonfile.writeFileSync(PREFS_FILENAME, prefs);
-    nativeTheme.themeSource = prefs.theme;
+    nativeTheme.themeSource = solversThemeSource(prefs.theme);
   }
 
   // Load assets

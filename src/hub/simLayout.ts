@@ -71,6 +71,65 @@ function restoreHiveModels() {
   if (changed) window.tabs.restoreState(state);
 }
 
+/** Robot pose sources the team's CAD draws (true pose + belief ghost). */
+const ROBOT_SOURCE_KEYS = [SIM_ROBOT_KEY, "RealOutputs/Field/RobotBelief"];
+/** Bundled / downloaded stock robots: fine, but not the team's robot. */
+const GENERIC_ROBOT_PATH = /Robot_FTCSimpleDriveBase|Robot_FRCKitBot|[\\/]lite[\\/]static[\\/]bundledAssets[\\/]/;
+const TEAM_CAD = "BioBuzz CAD";
+let askedForCad = false;
+
+/** Sets the robot model on the 3D tabs' robot + ghost sources for this sim log. */
+export function useRobotModel(model: string) {
+  const state = window.tabs.saveState();
+  let changed = false;
+  for (const tab of state.tabs) {
+    if (tab.type !== TabType.Field3d) continue;
+    const controller = tab.controller as { sources?: { logKey: string; options?: Record<string, string> }[] } | null;
+    if (controller === null || !Array.isArray(controller.sources)) continue;
+    for (const source of controller.sources) {
+      if (ROBOT_SOURCE_KEYS.includes(source.logKey) && source.options !== undefined && source.options.model !== model) {
+        source.options.model = model;
+        changed = true;
+      }
+    }
+  }
+  if (changed) window.tabs.restoreState(state);
+}
+
+/**
+ * The sim robot should be drawn with a team CAD. If it is on a generic or missing model, switch to an
+ * installed team CAD (BioBuzz CAD first); with none installed, ask once per session for one (main
+ * process, robotCad.ts). Keeping the default robot is fine: the view still works.
+ */
+function checkRobotModel() {
+  const robots = window.assets?.robots;
+  if (robots === undefined) return;
+  const isTeamCad = (name: string | undefined) => {
+    const robot = robots.find((r) => r.name === name);
+    return (
+      robot !== undefined &&
+      robot.isFTC &&
+      !GENERIC_ROBOT_PATH.test(robot.path) &&
+      !Object.values(HIVE_MODELS).includes(robot.name)
+    );
+  };
+  let current: string | undefined = undefined;
+  for (const tab of window.tabs.saveState().tabs) {
+    if (tab.type !== TabType.Field3d) continue;
+    const controller = tab.controller as { sources?: { logKey: string; options?: Record<string, string> }[] } | null;
+    const source = controller?.sources?.find((s) => s.logKey === SIM_ROBOT_KEY);
+    if (source !== undefined) current = source.options?.model;
+  }
+  if (current === undefined || isTeamCad(current)) return;
+  const teamCads = robots.filter((r) => isTeamCad(r.name)).map((r) => r.name);
+  if (teamCads.length > 0) {
+    useRobotModel(teamCads.includes(TEAM_CAD) ? TEAM_CAD : teamCads[0]);
+  } else if (!askedForCad && !window.preferences?.skipRobotCadPrompt) {
+    askedForCad = true;
+    window.sendMainMessage("prompt-robot-cad");
+  }
+}
+
 /** Plain AdvantageScope mode: closes SolversScope's own tabs (Shot Lab, Drive Sim, Telemetry, Auto Check). */
 export function removeSolversTabs() {
   const state = window.tabs.saveState();
@@ -176,8 +235,12 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
 
   useTippingField();
   restoreHiveModels();
-  if (window.preferences?.plainMode) removeSolversTabs();
-  else addAutoCheckTab();
+  if (window.preferences?.plainMode) {
+    removeSolversTabs();
+  } else {
+    addAutoCheckTab();
+    checkRobotModel();
+  }
 
   // Nothing is drawn until a time is selected: play the run from START
   window.selection.setSelectedTime(startTime());

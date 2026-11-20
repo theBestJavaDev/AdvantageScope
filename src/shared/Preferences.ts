@@ -34,10 +34,13 @@ export default interface Preferences {
   timestamps: "start-zero" | "original";
   /** SolversScope: plain AdvantageScope (no sim tabs, auto layout or Auto Check). */
   plainMode: boolean;
+  /** SolversScope: don't ask for the robot CAD when a sim log uses a generic robot. */
+  skipRobotCadPrompt: boolean;
 }
 
 export const DEFAULT_PREFS: Preferences = {
-  theme: "system",
+  theme: "dark", // SolversScope is black and gold
+
   robotAddress: "192.168.43.1", // REV Control Hub default
   remotePath: "/U/logs",
   liveMode: "ftcdashboard",
@@ -60,7 +63,8 @@ export const DEFAULT_PREFS: Preferences = {
   hasScrolledTimeline: false,
   prefersFTC: true,
   timestamps: "start-zero",
-  plainMode: false
+  plainMode: false,
+  skipRobotCadPrompt: false
 };
 
 export const DEFAULT_PREFS_LITEDS: Preferences = Object.assign({}, DEFAULT_PREFS, {
@@ -184,6 +188,9 @@ export function mergePreferences(basePrefs: Preferences, newPrefs: object) {
       newPrefs.field3dModeBattery === "low-power")
   ) {
     basePrefs.field3dModeBattery = newPrefs.field3dModeBattery;
+  }
+  if ("skipRobotCadPrompt" in newPrefs && typeof newPrefs.skipRobotCadPrompt === "boolean") {
+    basePrefs.skipRobotCadPrompt = newPrefs.skipRobotCadPrompt;
   }
   if ("plainMode" in newPrefs && typeof newPrefs.plainMode === "boolean") {
     basePrefs.plainMode = newPrefs.plainMode;

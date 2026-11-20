@@ -94,4 +94,10 @@ SolversScope watches). Per-computer setup:
   saved through the `export-telemetry-report` main-process message.
 - **Plain mode:** View → Plain AdvantageScope Mode (`plainMode` pref) hides the SolversScope tabs from New Tab, closes
   open ones, and skips the Auto Check tab on sim logs (`SOLVERS_TAB_TYPES` in `TabType.ts`, `removeSolversTabs` in `simLayout.ts`).
+- **Theme:** black and gold by default. "Match System" (the old default) also shows dark; only Preferences → Light
+  gives the light theme (`solversThemeSource` in `main.ts`).
+- **Robot CAD:** when a sim log's robot is on a generic model (stock Drive Base/KitBot) or a missing one,
+  `simLayout.ts` switches to an installed team CAD (BioBuzz CAD first). With none installed, it asks once per session
+  (`src/main/electron/robotCad.ts`): the chosen .glb is copied into userAssets as a robot. "Don't ask again" is
+  saved in the `skipRobotCadPrompt` pref.
 - **Physics checks:** `npm run test:sim` (`test/sim/simTests.ts`). Run it after changing anything in `src/shared/physics/`.

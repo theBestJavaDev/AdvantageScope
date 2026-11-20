@@ -29,7 +29,7 @@ import FTCDashboardSource from "./dataSources/ftcdashboard/FTCDashboardSource";
 import { NT4Publisher, NT4PublisherStatus } from "./dataSources/nt4/NT4Publisher";
 import NT4Source, { NT4Mode } from "./dataSources/nt4/NT4Source";
 import RLOGServerSource from "./dataSources/rlog/RLOGServerSource";
-import { maybeApplySimLayout, removeSolversTabs } from "./simLayout";
+import { maybeApplySimLayout, removeSolversTabs, useRobotModel } from "./simLayout";
 
 // Constants
 const STATE_SAVE_PERIOD_MS = 250;
@@ -615,6 +615,11 @@ async function handleMainMessage(message: NamedMessage) {
       window.platformArch = message.data.platformArch;
       window.appVersion = message.data.appVersion;
       updateFancyWindow();
+      break;
+
+    case "robot-cad-installed":
+      // SolversScope: the robot CAD chosen in the prompt (see robotCad.ts)
+      useRobotModel(message.data as string);
       break;
 
     case "set-preferences":

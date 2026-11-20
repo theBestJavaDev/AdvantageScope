@@ -57,7 +57,7 @@ window.addEventListener("message", (event) => {
           FIELD_3D_MODE_AC_LABEL.innerText = "3D Mode";
           break;
       }
-      THEME.value = oldPrefs.theme;
+      THEME.value = oldPrefs.theme === "light" ? "light" : "dark";
       ROBOT_ADDRESS.value = oldPrefs.robotAddress;
       REMOTE_PATH.value = oldPrefs.remotePath;
       LIVE_SUBSCRIBE_MODE.value = oldPrefs.liveSubscribeMode;
@@ -128,7 +128,8 @@ window.addEventListener("message", (event) => {
             hasScrolledTimeline: oldPrefs.hasScrolledTimeline,
             prefersFTC: oldPrefs.prefersFTC,
             timestamps: timestamps,
-            plainMode: oldPrefs.plainMode
+            plainMode: oldPrefs.plainMode,
+            skipRobotCadPrompt: oldPrefs.skipRobotCadPrompt
           };
           messagePort.postMessage(newPrefs);
         } else {
