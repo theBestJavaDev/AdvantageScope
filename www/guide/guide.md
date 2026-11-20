@@ -91,11 +91,15 @@ Use this to answer "which auto is better?", for example a 2-tip auto next to a 3
 2. Hold **Ctrl** and click two or three log files, then click Open.
 3. A **Compare** tab opens with one field per run. Press ▶ to play them together.
 
-**One run at a time:**
+**From a Multi Field tab:**
 
 1. Add a **Multi Field** tab: click **+** at the top right → Multi Field.
-2. Under the field, press **Choose run…** and pick a log.
-3. Press **+ Add field** for a second (or third) field, and **Choose run…** under it.
+2. Under the field, press **Choose run…**.
+3. Pick the logs you want to see (hold **Ctrl** to pick up to three) and click Open. The tab shows exactly
+   the runs you picked, one field each.
+
+To swap just one field, press **Choose run…** under that field and pick a single log. **+ Add field** adds an empty
+field.
 
 Each field has its own camera, so you can look at them from different angles. **Details ▸** under a field shows what it
 draws and which field model it uses (you can switch seasons there, e.g. BioBuzz and DECODE). The ✕ removes a field.
@@ -181,7 +185,7 @@ The report includes the Auto Check results when the log is a sim run.
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | A plain gray robot instead of ours         | SolversScope asks you to **choose your robot's CAD** (a `.glb` file). Pick it once and it's remembered. "Use Default Robot" is fine too. |
 | The HIVEs don't tip                        | The tipping HIVE models aren't on this computer. Run `sim/advantagescope/make_field_model.py` from the robot code.                       |
-| A field shows "No run here yet"            | Press **Choose run…** under it.                                                                                                          |
+| A field shows "No run here yet"            | Press **Choose run…** under it and pick one or more logs.                                                                                |
 | I only want plain AdvantageScope           | View → **Plain AdvantageScope Mode**. Untick it to get the SolversScope tabs back.                                                       |
 | The app is light instead of black and gold | App → Preferences → Theme → **Black & Gold**.                                                                                            |
 | Nothing happens when I press play          | Click the timeline first, or open a log (File → Open Log(s)…).                                                                           |

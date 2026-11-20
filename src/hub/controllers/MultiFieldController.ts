@@ -49,7 +49,7 @@ export default class MultiFieldController implements TabController {
     compare.addEventListener("click", () => window.sendMainMessage("open-compare-runs"));
     const hint = document.createElement("span");
     hint.className = "multifield-hint";
-    hint.textContent = "Each field plays one run. Press “Choose run…” on a field to put a log in it.";
+    hint.textContent = "Press “Choose run…” and pick one log, or up to 3 to show them all side by side.";
     const help = document.createElement("button");
     help.className = "multifield-help";
     help.textContent = "?";
@@ -82,7 +82,7 @@ export default class MultiFieldController implements TabController {
     const choose = document.createElement("button");
     choose.className = "multifield-button multifield-choose";
     choose.textContent = "Choose run…";
-    choose.title = "Pick a log file to play in this field";
+    choose.title = "Pick one log for this field, or up to 3 logs to show them all side by side";
     const details = document.createElement("button");
     details.className = "multifield-details";
     details.textContent = "Details ▸";

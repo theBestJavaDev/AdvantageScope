@@ -1393,8 +1393,9 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
       // SolversScope Multi Field: a field's "Choose run…" button (one log for that field)
       dialog
         .showOpenDialog(window, {
-          title: "Choose the run to play in this field",
-          properties: ["openFile"],
+          title: "Choose the run(s) to show",
+          message: "Pick one run for this field, or up to three to show them all side by side",
+          properties: ["openFile", "multiSelections"],
           filters: [
             {
               name: "Robot logs",
@@ -1403,7 +1404,22 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
           ]
         })
         .then((files) => {
-          if (files.filePaths.length === 0) return;
+          const count = files.filePaths.length;
+          if (count === 0) return;
+          if (count > 3) {
+            dialog.showMessageBox(window, {
+              type: "info",
+              title: "Choose runs",
+              message: "Pick up to three runs",
+              detail: count + " were selected. A Multi Field tab shows at most three fields at a time."
+            });
+            return;
+          }
+          if (count > 1) {
+            // Several runs: the tab shows exactly these, one field each
+            sendMessage(window, "load-runs-into-tab", { files: files.filePaths, uuid: message.data.uuid });
+            return;
+          }
           sendMessage(window, "load-run-into-field", {
             file: files.filePaths[0],
             uuid: message.data.uuid,

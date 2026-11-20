@@ -800,6 +800,19 @@ async function handleMainMessage(message: NamedMessage) {
       }
       break;
 
+    case "load-runs-into-tab":
+      // SolversScope Multi Field: several runs picked in "Choose run…"; that tab shows exactly them
+      if (isExporting) {
+        window.sendMainMessage("error", {
+          title: "Cannot load the runs",
+          content: "Please wait for the export to finish, then try again."
+        });
+      } else {
+        const runs = beginCompare(message.data.files as string[], message.data.uuid as string);
+        runs.forEach((file, index) => startHistorical(file, index === 0, runs.length > 1));
+      }
+      break;
+
     case "load-run-into-field":
       // SolversScope Multi Field: one log for one field. Added to what's loaded (or opened, if
       // nothing is), then that field is set up for it (compareRuns.ts)
