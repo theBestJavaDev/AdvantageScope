@@ -2870,6 +2870,7 @@ function createHubWindow(state?: WindowState, layoutOverride?: any) {
 
   // Create window
   let window = new BrowserWindow(prefs);
+  window.setTitle("SolversScope");
   hubWindows.push(window);
   if (process.platform === "linux") {
     window.setMenuBarVisibility(false);

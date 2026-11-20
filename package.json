@@ -1,7 +1,7 @@
 {
-  "name": "advantagescope",
-  "productName": "AdvantageScope",
-  "version": "27.0.0-alpha-6",
+  "name": "solversscope",
+  "productName": "SolversScope",
+  "version": "1.0.0",
   "description": "Robot telemetry application",
   "author": {
     "name": "Littleton Robotics",
@@ -52,7 +52,7 @@
     "chart.js": "^4.4.0",
     "color-convert": "^2.0.1",
     "compare-versions": "^6.1.1",
-    "electron": "^39.2.7",
+    "electron": "^45.3.3",
     "electron-builder": "^26.15.3",
     "fuse.js": "^7.0.0",
     "gunzip-file": "^0.1.1",
@@ -194,7 +194,7 @@
     ],
     "mac": {
       "target": "dmg",
-      "icon": "icons/app/app-icon.icon",
+      "icon": "icons/window-icon.png",
       "entitlements": "entitlements.mac.plist",
       "entitlementsInherit": "entitlements.mac.plist",
       "extendInfo": {
@@ -232,7 +232,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "icons/app/app-icon.ico"
+      "icon": "icons/window-icon.png"
     }
   }
 }
