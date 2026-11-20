@@ -176,20 +176,22 @@ function sendAllPreferences() {
   });
   if (downloadWindow !== null && !downloadWindow.isDestroyed()) sendMessage(downloadWindow, "set-preferences", data);
   if (menuTemplate !== null) {
+    // Found by label, not position: SolversScope adds items to these menus (e.g. Compare Runs)
+    const appItems = menuTemplate[0].submenu as Electron.MenuItemConstructorOptions[];
+    const fileItems = menuTemplate[1].submenu as Electron.MenuItemConstructorOptions[];
+    const item = (items: Electron.MenuItemConstructorOptions[], label: string) =>
+      items.find((entry) => entry.label === label);
     let autoString = "Default: " + getLiveModeName(data.liveMode);
-    (
-      (menuTemplate[1].submenu as Electron.MenuItemConstructorOptions[])[2]
-        .submenu as Electron.MenuItemConstructorOptions[]
-    )[0].label = autoString;
-    (
-      (menuTemplate[1].submenu as Electron.MenuItemConstructorOptions[])[3]
-        .submenu as Electron.MenuItemConstructorOptions[]
-    )[0].label = autoString;
-    (menuTemplate[0].submenu as Electron.MenuItemConstructorOptions[])[7].checked = data.userAssetsFolder !== null;
-    (menuTemplate[1].submenu as Electron.MenuItemConstructorOptions[])[7].checked =
-      data.systemcoreStaticAddress === "usb";
-    (menuTemplate[1].submenu as Electron.MenuItemConstructorOptions[])[8].checked =
-      data.systemcoreStaticAddress === "wifi";
+    ["Connect to Robot", "Connect to Simulator"].forEach((label) => {
+      const submenu = item(fileItems, label)?.submenu as Electron.MenuItemConstructorOptions[] | undefined;
+      if (submenu !== undefined && submenu.length > 0) submenu[0].label = autoString;
+    });
+    const customAssets = item(appItems, "Use Custom Assets Folder");
+    if (customAssets !== undefined) customAssets.checked = data.userAssetsFolder !== null;
+    const usb = item(fileItems, "Use Systemcore USB Address");
+    if (usb !== undefined) usb.checked = data.systemcoreStaticAddress === "usb";
+    const wifi = item(fileItems, "Use Systemcore Wi-Fi Address");
+    if (wifi !== undefined) wifi.checked = data.systemcoreStaticAddress === "wifi";
     let menu = Menu.buildFromTemplate(menuTemplate);
     Menu.setApplicationMenu(menu);
     BrowserWindow.getAllWindows().forEach((w) => {
@@ -1379,6 +1381,10 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
       select2DCameraPopup(window, message.data.position, message.data.selectedIndex);
       break;
 
+    case "open-compare-runs":
+      compareRunsDialog(window);
+      break;
+
     case "prompt-robot-cad":
       // SolversScope: sim log drawn with a generic robot; ask for the team's CAD (see robotCad.ts)
       promptRobotCad(window).then(async (name) => {
@@ -1538,6 +1544,36 @@ setInterval(() => {
  */
 function solversThemeSource(theme: Preferences["theme"]): "light" | "dark" {
   return theme === "light" ? "light" : "dark";
+}
+
+/** SolversScope Compare Runs: pick up to three logs, shown side by side in one Multi Field tab. */
+function compareRunsDialog(window: BrowserWindow) {
+  dialog
+    .showOpenDialog(window, {
+      title: "Select up to three runs to compare",
+      message: "Each run gets its own field, side by side in one tab, all playing in sync",
+      properties: ["openFile", "multiSelections"],
+      filters: [
+        {
+          name: "Robot logs",
+          extensions: ["rlog", "wpilog", "wpilogxz", "hoot", "revlog", "log", "csv", "dslog", "dsevents"]
+        }
+      ]
+    })
+    .then((files) => {
+      const count = files.filePaths.length;
+      if (count === 0) return;
+      if (count > 3) {
+        dialog.showMessageBox(window, {
+          type: "info",
+          title: "Compare Runs",
+          message: "Pick up to three runs",
+          detail: count + " were selected. Compare Runs shows at most three fields at a time."
+        });
+        return;
+      }
+      sendMessage(window, "compare-runs", { files: files.filePaths });
+    });
 }
 
 /** Shows a popup to create a new tab on a hub window. */
@@ -2306,6 +2342,16 @@ function setupMenu() {
                   sendMessage(window!, "open-files", { files: files.filePaths, merge: true });
                 }
               });
+          }
+        },
+        {
+          // SolversScope: up to three logs side by side in one Multi Field tab (hub/compareRuns.ts)
+          label: "Compare Runs (up to 3)...",
+          accelerator: "CmdOrCtrl+Alt+O",
+          click(_, baseWindow) {
+            const window = baseWindow as BrowserWindow | undefined;
+            if (window === undefined || !hubWindows.includes(window)) return;
+            compareRunsDialog(window);
           }
         },
         {

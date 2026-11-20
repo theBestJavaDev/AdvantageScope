@@ -1171,3 +1171,164 @@ table.autocheck-shots td.tune {
   color: var(--ss-accent);
   font-family: var(--ss-font-mono);
 }
+
+/* ---------------------------------------------------------------- Multi Field tab */
+/* Up to three 3D fields side by side (MultiFieldController / MultiFieldRenderer). */
+
+div.multifield-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  background: var(--ss-border);
+}
+
+div.multifield-cell {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--ss-window);
+}
+
+div.multifield-view {
+  position: absolute;
+  inset: 0;
+}
+
+div.multifield-cell div.field-3d-canvas-container {
+  height: 100%;
+}
+
+div.multifield-cell-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  max-width: calc(100% - 20px);
+  padding: 4px 10px;
+  border-left: 3px solid var(--ss-accent);
+  background: color-mix(in srgb, var(--ss-window) 78%, transparent);
+  color: var(--ss-text);
+  font-family: var(--ss-font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 2;
+}
+
+div.multifield-controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+div.multifield-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--ss-border);
+}
+
+span.multifield-label {
+  font-family: var(--ss-font-display);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ss-text-dim);
+}
+
+span.multifield-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ss-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.multifield-button {
+  padding: 4px 12px;
+  border: 1px solid var(--ss-accent);
+  background: transparent;
+  color: var(--ss-text);
+  font-family: var(--ss-font-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+button.multifield-button:hover:not(:disabled) {
+  background: var(--ss-accent);
+  color: #0b0a06;
+}
+
+button.multifield-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+div.multifield-panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  background: var(--ss-border);
+}
+
+div.multifield-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ss-surface);
+}
+
+div.multifield-pane-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--ss-accent);
+}
+
+input.multifield-pane-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--ss-text);
+  font-family: var(--ss-font-display);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+button.multifield-remove {
+  border: none;
+  background: transparent;
+  color: var(--ss-text-dim);
+  cursor: pointer;
+}
+
+button.multifield-remove:disabled {
+  visibility: hidden;
+}
+
+div.multifield-pane-controls {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The 3D Field settings column is narrow in a pane: hide the XR control there */
+div.multifield-pane-controls div.xr-control {
+  display: none;
+}

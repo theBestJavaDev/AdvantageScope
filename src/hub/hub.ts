@@ -21,6 +21,7 @@ import Sidebar from "./Sidebar";
 import SourceList from "./SourceList";
 import Tabs from "./Tabs";
 import WorkerManager from "./WorkerManager";
+import { beginCompare, maybeSetUpCompare } from "./compareRuns";
 import { HistoricalDataSource, HistoricalDataSourceStatus } from "./dataSources/HistoricalDataSource";
 import { LiveDataSource, LiveDataSourceStatus } from "./dataSources/LiveDataSource";
 import LiveDataTuner from "./dataSources/LiveDataTuner";
@@ -392,6 +393,7 @@ function startHistorical(path: string, clear = true, merge = false) {
           // SolversScope: set up the team's sim views for a BioBuzz sim log (see simLayout.ts)
           if (status === HistoricalDataSourceStatus.Idle || status === HistoricalDataSourceStatus.DecodingField) {
             void maybeApplySimLayout(path);
+            void maybeSetUpCompare();
           }
           break;
         case HistoricalDataSourceStatus.Error:
@@ -782,6 +784,19 @@ async function handleMainMessage(message: NamedMessage) {
             startHistorical(file, index === 0, files.length > 1);
           }
         });
+      }
+      break;
+
+    case "compare-runs":
+      // SolversScope: up to three logs side by side, one 3D window each (see compareRuns.ts)
+      if (isExporting) {
+        window.sendMainMessage("error", {
+          title: "Cannot compare runs",
+          content: "Please wait for the export to finish, then try again."
+        });
+      } else {
+        const runs = beginCompare(message.data.files as string[]);
+        runs.forEach((file, index) => startHistorical(file, index === 0, runs.length > 1));
       }
       break;
 

@@ -20,6 +20,7 @@ import JoysticksRenderer from "../shared/renderers/JoysticksRenderer";
 import LineGraphRenderer from "../shared/renderers/LineGraphRenderer";
 import MechanismRenderer from "../shared/renderers/MechanismRenderer";
 import MetadataRenderer from "../shared/renderers/MetadataRenderer";
+import MultiFieldRenderer from "../shared/renderers/MultiFieldRenderer";
 import PointsRenderer from "../shared/renderers/PointsRenderer";
 import ShotLabRenderer from "../shared/renderers/ShotLabRenderer";
 import StatisticsRenderer from "../shared/renderers/StatisticsRenderer";
@@ -41,6 +42,7 @@ import JoysticksController from "./controllers/JoysticksController";
 import LineGraphController from "./controllers/LineGraphController";
 import MechanismController from "./controllers/MechanismController";
 import MetadataController from "./controllers/MetadataController";
+import MultiFieldController from "./controllers/MultiFieldController";
 import PointsController from "./controllers/PointsController";
 import ShotLabController from "./controllers/ShotLabController";
 import StatisticsController from "./controllers/StatisticsController";
@@ -595,6 +597,10 @@ export default class Tabs {
       case TabType.AutoCheck:
         controller = new AutoCheckController(rendererElement);
         renderer = new AutoCheckRenderer(rendererElement);
+        break;
+      case TabType.MultiField:
+        controller = new MultiFieldController(controlsElement);
+        renderer = new MultiFieldRenderer(rendererElement);
         break;
       default:
         controller = new NoopController();

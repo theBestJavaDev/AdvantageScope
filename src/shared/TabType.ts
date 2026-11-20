@@ -24,7 +24,8 @@ enum TabType {
   ShotLab,
   DriveSim,
   Telemetry,
-  AutoCheck
+  AutoCheck,
+  MultiField
 }
 
 export default TabType;
@@ -34,7 +35,13 @@ export function getAllTabTypes(): TabType[] {
 }
 
 /** SolversScope's own tabs (hidden from the New Tab menus in plain mode). */
-export const SOLVERS_TAB_TYPES = [TabType.ShotLab, TabType.DriveSim, TabType.Telemetry, TabType.AutoCheck];
+export const SOLVERS_TAB_TYPES = [
+  TabType.ShotLab,
+  TabType.DriveSim,
+  TabType.Telemetry,
+  TabType.AutoCheck,
+  TabType.MultiField
+];
 
 /** Tab types offered in the New Tab menus (everything but Documentation; plain mode drops SolversScope's tabs). */
 export function getNewTabTypes(plainMode: boolean): TabType[] {
@@ -98,6 +105,8 @@ export function getDefaultTabTitle(type: TabType): string {
       return "Telemetry";
     case TabType.AutoCheck:
       return "Auto Check";
+    case TabType.MultiField:
+      return "Multi Field";
     default:
       return "";
   }
@@ -139,6 +148,8 @@ export function getTabIcon(type: TabType): string {
       return "📟";
     case TabType.AutoCheck:
       return "✅";
+    case TabType.MultiField:
+      return "🧩";
     default:
       return "";
   }
@@ -182,6 +193,8 @@ export function getTabAccelerator(type: TabType): string {
           return "E";
         case TabType.AutoCheck:
           return "U";
+        case TabType.MultiField:
+          return "N";
         default:
           return "";
       }

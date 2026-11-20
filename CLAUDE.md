@@ -98,6 +98,11 @@ SolversScope watches). Per-computer setup:
   centers it (`centeringExitSpeed`), with its hit chance under match error ("Tune" column, "With tuned speeds" card).
 - **3D backdrop:** `src/shared/renderers/field3d/SolversArena.ts` (dome, lit floor, gold grid, fog in the theme
   colors). Mix colors in sRGB there (`mix`): lerping `THREE.Color` in linear space turns dark tints gray/olive.
+- **Multi Field tab / Compare Runs:** up to 3 3D fields side by side in one tab (`MultiFieldController` /
+  `MultiFieldRenderer`; each pane wraps a normal `Field3dController` / `Field3dRenderer`, built from the
+  `controller3` / `renderer3` templates). File → Compare Runs (Ctrl+Alt+O) or the tab's button loads up to 3 logs
+  merged under `/Log0..2` (aligned at the auto start) and builds one pane per run (`src/hub/compareRuns.ts`).
+  `sendAllPreferences` finds File/App menu items by label, so new menu items are safe.
 - **Theme:** black and gold by default. "Match System" (the old default) also shows dark; only Preferences → Light
   gives the light theme (`solversThemeSource` in `main.ts`).
 - **Robot CAD:** when a sim log's robot is on a generic model (stock Drive Base/KitBot) or a missing one,

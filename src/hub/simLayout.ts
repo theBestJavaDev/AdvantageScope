@@ -23,7 +23,7 @@ import { createUUID } from "../shared/util";
 /** Present in every BioBuzz SimLoop RLOG (the true robot pose for the field views). */
 const SIM_ROBOT_KEY = "RealOutputs/Field/Robot";
 const LEG_KEY = "RealOutputs/Auto/leg";
-const LAYOUT_URL = "layouts/biobuzz-sim.json";
+export const SIM_LAYOUT_URL = "layouts/biobuzz-sim.json";
 
 let lastHandledLog: string | null = null;
 
@@ -41,7 +41,7 @@ function isUnconfiguredView(tab: TabsState["tabs"][number]): boolean {
 }
 
 /** The sim layout's 3D field: the 2026-2027 field without its fixed HIVE bars and staged balls. */
-const TIPPING_FIELD_ID = "FTC:BioBuzz Sim Field";
+export const TIPPING_FIELD_ID = "FTC:BioBuzz Sim Field";
 const HIVE_SOURCE_KEY = "RealOutputs/Field/HiveRed";
 /** HIVE pose sources and the robot models (made by make_field_model.py) that draw them; a missing one draws nothing. */
 const HIVE_MODELS: Record<string, string> = {
@@ -75,7 +75,7 @@ function restoreHiveModels() {
 const ROBOT_SOURCE_KEYS = [SIM_ROBOT_KEY, "RealOutputs/Field/RobotBelief"];
 /** Bundled / downloaded stock robots: fine, but not the team's robot. */
 const GENERIC_ROBOT_PATH = /Robot_FTCSimpleDriveBase|Robot_FRCKitBot|[\\/]lite[\\/]static[\\/]bundledAssets[\\/]/;
-const TEAM_CAD = "BioBuzz CAD";
+export const TEAM_CAD = "BioBuzz CAD";
 let askedForCad = false;
 
 /** Sets the robot model on the 3D tabs' robot + ghost sources for this sim log. */
@@ -210,7 +210,7 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
   if (!alreadySetUp) {
     let layout: { hubs?: { state?: { tabs?: TabsState } }[] };
     try {
-      const response = await fetch(LAYOUT_URL);
+      const response = await fetch(SIM_LAYOUT_URL);
       layout = await response.json();
     } catch (error) {
       console.error("Could not load the BioBuzz sim layout", error);

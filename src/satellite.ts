@@ -20,6 +20,7 @@ import JoysticksRenderer from "./shared/renderers/JoysticksRenderer";
 import LineGraphRenderer from "./shared/renderers/LineGraphRenderer";
 import MechanismRenderer from "./shared/renderers/MechanismRenderer";
 import MetadataRenderer from "./shared/renderers/MetadataRenderer";
+import MultiFieldRenderer from "./shared/renderers/MultiFieldRenderer";
 import PointsRenderer from "./shared/renderers/PointsRenderer";
 import ShotLabRenderer from "./shared/renderers/ShotLabRenderer";
 import StatisticsRenderer from "./shared/renderers/StatisticsRenderer";
@@ -117,6 +118,9 @@ function updateVisualizer() {
       break;
     case TabType.AutoCheck:
       renderer = new AutoCheckRenderer(root);
+      break;
+    case TabType.MultiField:
+      renderer = new MultiFieldRenderer(root);
       break;
   }
 }
