@@ -29,7 +29,7 @@ import FTCDashboardSource from "./dataSources/ftcdashboard/FTCDashboardSource";
 import { NT4Publisher, NT4PublisherStatus } from "./dataSources/nt4/NT4Publisher";
 import NT4Source, { NT4Mode } from "./dataSources/nt4/NT4Source";
 import RLOGServerSource from "./dataSources/rlog/RLOGServerSource";
-import { maybeApplySimLayout } from "./simLayout";
+import { maybeApplySimLayout, removeSolversTabs } from "./simLayout";
 
 // Constants
 const STATE_SAVE_PERIOD_MS = 250;
@@ -582,6 +582,7 @@ async function handleMainMessage(message: NamedMessage) {
 
     case "restore-state":
       restoreState(message.data);
+      if (window.preferences?.plainMode) removeSolversTabs();
       break;
 
     case "restore-type-memory":
@@ -618,6 +619,7 @@ async function handleMainMessage(message: NamedMessage) {
 
     case "set-preferences":
       window.preferences = message.data;
+      if (window.preferences?.plainMode) removeSolversTabs();
       checkLiveAutoStart();
       break;
 

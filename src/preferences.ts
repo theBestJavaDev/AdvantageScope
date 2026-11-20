@@ -127,7 +127,8 @@ window.addEventListener("message", (event) => {
             hasScrolledLineGraph: oldPrefs.hasScrolledLineGraph,
             hasScrolledTimeline: oldPrefs.hasScrolledTimeline,
             prefersFTC: oldPrefs.prefersFTC,
-            timestamps: timestamps
+            timestamps: timestamps,
+            plainMode: oldPrefs.plainMode
           };
           messagePort.postMessage(newPrefs);
         } else {

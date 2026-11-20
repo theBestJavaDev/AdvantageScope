@@ -33,6 +33,16 @@ export function getAllTabTypes(): TabType[] {
   return Object.values(TabType).filter((tabType) => typeof tabType === "number") as TabType[];
 }
 
+/** SolversScope's own tabs (hidden from the New Tab menus in plain mode). */
+export const SOLVERS_TAB_TYPES = [TabType.ShotLab, TabType.DriveSim, TabType.Telemetry, TabType.AutoCheck];
+
+/** Tab types offered in the New Tab menus (everything but Documentation; plain mode drops SolversScope's tabs). */
+export function getNewTabTypes(plainMode: boolean): TabType[] {
+  return getAllTabTypes()
+    .slice(1)
+    .filter((tabType) => !plainMode || !SOLVERS_TAB_TYPES.includes(tabType));
+}
+
 export const LITE_COMPATIBLE_TABS =
   DISTRIBUTION === Distribution.Lite
     ? [

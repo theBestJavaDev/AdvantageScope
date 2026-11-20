@@ -32,6 +32,8 @@ export default interface Preferences {
   hasScrolledTimeline: boolean;
   prefersFTC: boolean;
   timestamps: "start-zero" | "original";
+  /** SolversScope: plain AdvantageScope (no sim tabs, auto layout or Auto Check). */
+  plainMode: boolean;
 }
 
 export const DEFAULT_PREFS: Preferences = {
@@ -57,7 +59,8 @@ export const DEFAULT_PREFS: Preferences = {
   hasScrolledLineGraph: false,
   hasScrolledTimeline: false,
   prefersFTC: true,
-  timestamps: "start-zero"
+  timestamps: "start-zero",
+  plainMode: false
 };
 
 export const DEFAULT_PREFS_LITEDS: Preferences = Object.assign({}, DEFAULT_PREFS, {
@@ -181,6 +184,9 @@ export function mergePreferences(basePrefs: Preferences, newPrefs: object) {
       newPrefs.field3dModeBattery === "low-power")
   ) {
     basePrefs.field3dModeBattery = newPrefs.field3dModeBattery;
+  }
+  if ("plainMode" in newPrefs && typeof newPrefs.plainMode === "boolean") {
+    basePrefs.plainMode = newPrefs.plainMode;
   }
   if ("field3dAntialiasing" in newPrefs && typeof newPrefs.field3dAntialiasing === "boolean") {
     basePrefs.field3dAntialiasing = newPrefs.field3dAntialiasing;

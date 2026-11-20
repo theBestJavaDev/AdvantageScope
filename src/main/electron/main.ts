@@ -42,7 +42,7 @@ import LineGraphFilter from "../../shared/LineGraphFilter";
 import NamedMessage from "../../shared/NamedMessage";
 import Preferences, { DEFAULT_PREFS, getLiveModeName, LiveMode, mergePreferences } from "../../shared/Preferences";
 import { SourceListConfig, SourceListItemState, SourceListTypeMemory } from "../../shared/SourceListConfig";
-import TabType, { getAllTabTypes, getDefaultTabTitle, getTabAccelerator, getTabIcon } from "../../shared/TabType";
+import TabType, { getDefaultTabTitle, getNewTabTypes, getTabAccelerator, getTabIcon } from "../../shared/TabType";
 import { BUILD_DATE, COPYRIGHT, DISTRIBUTION, Distribution } from "../../shared/buildConstants";
 import { Units } from "../../shared/units";
 import { createUUID, formatDate } from "../../shared/util";
@@ -1525,19 +1525,18 @@ setInterval(() => {
 function newTabPopup(window: BrowserWindow, rect: ButtonRect) {
   if (!hubWindows.includes(window)) return;
   const newTabMenu = new Menu();
-  getAllTabTypes()
-    .slice(1)
-    .forEach((tabType) => {
-      newTabMenu.append(
-        new MenuItem({
-          label: getTabIcon(tabType) + " " + getDefaultTabTitle(tabType),
-          accelerator: getTabAccelerator(tabType),
-          click() {
-            sendMessage(window, "new-tab", tabType);
-          }
-        })
-      );
-    });
+  const prefs: Preferences = jsonfile.readFileSync(PREFS_FILENAME);
+  getNewTabTypes(prefs.plainMode).forEach((tabType) => {
+    newTabMenu.append(
+      new MenuItem({
+        label: getTabIcon(tabType) + " " + getDefaultTabTitle(tabType),
+        accelerator: getTabAccelerator(tabType),
+        click() {
+          sendMessage(window, "new-tab", tabType);
+        }
+      })
+    );
+  });
   newTabMenu.popup({
     window: window,
     x: Math.round(rect.x + rect.width),
@@ -2629,7 +2628,21 @@ function setupMenu() {
             sendMessage(window, "toggle-controls");
           }
         },
-        { role: "togglefullscreen" }
+        { role: "togglefullscreen" },
+        { type: "separator" },
+        {
+          // SolversScope: plain AdvantageScope, without the sim tabs, sim layout or Auto Check
+          label: "Plain AdvantageScope Mode",
+          type: "checkbox",
+          checked: prefs.plainMode,
+          click(item) {
+            let prefs: Preferences = jsonfile.readFileSync(PREFS_FILENAME);
+            prefs.plainMode = item.checked;
+            jsonfile.writeFileSync(PREFS_FILENAME, prefs);
+            sendAllPreferences();
+            setupMenu();
+          }
+        }
       ]
     },
     {
@@ -2637,19 +2650,17 @@ function setupMenu() {
       submenu: [
         {
           label: "New Tab",
-          submenu: getAllTabTypes()
-            .slice(1)
-            .map((tabType) => {
-              return {
-                label: getTabIcon(tabType) + " " + getDefaultTabTitle(tabType),
-                accelerator: getTabAccelerator(tabType),
-                click(_, baseWindow) {
-                  const window = baseWindow as BrowserWindow | undefined;
-                  if (window === undefined || !hubWindows.includes(window)) return;
-                  sendMessage(window, "new-tab", tabType);
-                }
-              };
-            })
+          submenu: getNewTabTypes(prefs.plainMode).map((tabType) => {
+            return {
+              label: getTabIcon(tabType) + " " + getDefaultTabTitle(tabType),
+              accelerator: getTabAccelerator(tabType),
+              click(_, baseWindow) {
+                const window = baseWindow as BrowserWindow | undefined;
+                if (window === undefined || !hubWindows.includes(window)) return;
+                sendMessage(window, "new-tab", tabType);
+              }
+            };
+          })
         },
         {
           label: "New Tab (Shortcut)", // Hidden item to add keyboard shortcut
@@ -2922,13 +2933,11 @@ function createHubWindow(state?: WindowState, layoutOverride?: any) {
                 new TouchBar.TouchBarScrubber({
                   selectedStyle: "background",
                   continuous: false,
-                  items: getAllTabTypes()
-                    .slice(1)
-                    .map((type) => {
-                      return {
-                        label: getTabIcon(type) + " " + getDefaultTabTitle(type)
-                      };
-                    }),
+                  items: getNewTabTypes(false).map((type) => {
+                    return {
+                      label: getTabIcon(type) + " " + getDefaultTabTitle(type)
+                    };
+                  }),
                   select(index) {
                     if (newCreated) return;
                     newCreated = true;

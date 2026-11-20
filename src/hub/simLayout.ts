@@ -7,7 +7,7 @@
 
 import { TabsState } from "../shared/HubState";
 import LoggableType from "../shared/log/LoggableType";
-import TabType from "../shared/TabType";
+import TabType, { SOLVERS_TAB_TYPES } from "../shared/TabType";
 import { createUUID } from "../shared/util";
 
 /**
@@ -16,7 +16,8 @@ import { createUUID } from "../shared/util";
  * field or graph tab has anything assigned, this adds the team's sim layout (www/layouts/biobuzz-sim.json,
  * a copy of the robot repo's sim/advantagescope/layout.json): 3D + 2D field with the robot, POLLEN in
  * flight, HIVE tips and shot arcs, plus the mechanism and graph tabs. Then it plays the run from START.
- * Tabs the user configured, and the SolversScope tools, are kept.
+ * Tabs the user configured, and the SolversScope tools, are kept. In plain AdvantageScope mode
+ * (View menu) no Auto Check tab is added.
  */
 
 /** Present in every BioBuzz SimLoop RLOG (the true robot pose for the field views). */
@@ -42,6 +43,44 @@ function isUnconfiguredView(tab: TabsState["tabs"][number]): boolean {
 /** The sim layout's 3D field: the 2026-2027 field without its fixed HIVE bars and staged balls. */
 const TIPPING_FIELD_ID = "FTC:BioBuzz Sim Field";
 const HIVE_SOURCE_KEY = "RealOutputs/Field/HiveRed";
+/** HIVE pose sources and the robot models (made by make_field_model.py) that draw them. */
+const HIVE_MODELS: Record<string, string> = {
+  "RealOutputs/Field/HiveRed": "BioBuzz HIVE Red",
+  "RealOutputs/Field/HiveBlue": "BioBuzz HIVE Blue"
+};
+
+/**
+ * Without the HIVE models a robot source falls back to the default robot model, which then floats
+ * at each HIVE's pose (a robot drawn inside each HIVE). Hide those sources when the models are missing.
+ */
+function hideMissingHiveModels() {
+  const robots = new Set((window.assets?.robots ?? []).map((robot) => robot.name));
+  const state = window.tabs.saveState();
+  let changed = false;
+  for (const tab of state.tabs) {
+    if (tab.type !== TabType.Field3d) continue;
+    const controller = tab.controller as { sources?: { logKey: string; visible?: boolean }[] } | null;
+    if (controller === null || !Array.isArray(controller.sources)) continue;
+    for (const source of controller.sources) {
+      const model = HIVE_MODELS[source.logKey];
+      if (model !== undefined && !robots.has(model) && source.visible !== false) {
+        source.visible = false;
+        changed = true;
+      }
+    }
+  }
+  if (changed) window.tabs.restoreState(state);
+}
+
+/** Plain AdvantageScope mode: closes SolversScope's own tabs (Shot Lab, Drive Sim, Telemetry, Auto Check). */
+export function removeSolversTabs() {
+  const state = window.tabs.saveState();
+  const selected = state.tabs[state.selected];
+  const tabs = state.tabs.filter((tab) => !SOLVERS_TAB_TYPES.includes(tab.type));
+  if (tabs.length === state.tabs.length) return;
+  const index = tabs.indexOf(selected);
+  window.tabs.restoreState({ selected: index >= 0 ? index : 0, tabs: tabs });
+}
 
 /**
  * 3D tabs that draw the sim's HIVEs should sit on the tipping field (made by the robot repo's
@@ -137,7 +176,9 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
   }
 
   useTippingField();
-  addAutoCheckTab();
+  hideMissingHiveModels();
+  if (window.preferences?.plainMode) removeSolversTabs();
+  else addAutoCheckTab();
 
   // Nothing is drawn until a time is selected: play the run from START
   window.selection.setSelectedTime(startTime());

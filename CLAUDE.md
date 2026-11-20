@@ -92,4 +92,6 @@ SolversScope watches). Per-computer setup:
   `www/symbols/solvers-logo.svg`. The 2D sim canvases use the same palette (alliance red/blue kept).
 - **Telemetry reports:** Telemetry tab → ● Record (marks a window) → ⬇ Download .md. Built by `src/hub/telemetryReport.ts`,
   saved through the `export-telemetry-report` main-process message.
+- **Plain mode:** View → Plain AdvantageScope Mode (`plainMode` pref) hides the SolversScope tabs from New Tab, closes
+  open ones, and skips the Auto Check tab on sim logs (`SOLVERS_TAB_TYPES` in `TabType.ts`, `removeSolversTabs` in `simLayout.ts`).
 - **Physics checks:** `npm run test:sim` (`test/sim/simTests.ts`). Run it after changing anything in `src/shared/physics/`.
