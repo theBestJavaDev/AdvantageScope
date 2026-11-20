@@ -207,9 +207,15 @@ export default class AutoCheckController implements TabController {
       log.putNumber(LOG_PREFIX + "/ShotChanceIn", s.shot.time, isFinite(s.pIn) ? s.pIn : 0);
       log.putBoolean(LOG_PREFIX + "/ShotInWithMagnus", s.shot.time, s.spinHit);
       log.putNumber(LOG_PREFIX + "/ShotMagnusShiftMeters", s.shot.time, isFinite(s.magnusShift) ? s.magnusShift : 0);
+      if (isFinite(s.mouthOffset)) log.putNumber(LOG_PREFIX + "/ShotMouthOffsetMeters", s.shot.time, s.mouthOffset);
+      if (isFinite(s.tunedExitSpeed)) {
+        log.putNumber(LOG_PREFIX + "/ShotTunedExitSpeed", s.shot.time, s.tunedExitSpeed);
+        log.putNumber(LOG_PREFIX + "/ShotTunedChanceIn", s.shot.time, s.tunedPIn);
+      }
     });
     const t = result.shots.length > 0 ? result.shots[0].shot.time : log.getTimestampRange()[0];
     log.putNumber(LOG_PREFIX + "/ExpectedIn", t, result.expectedIn);
+    log.putNumber(LOG_PREFIX + "/TunedExpectedIn", t, result.tunedExpectedIn);
     log.putNumber(LOG_PREFIX + "/Range90Low", t, result.range90[0]);
     log.putNumber(LOG_PREFIX + "/Range90High", t, result.range90[1]);
     log.putNumber(LOG_PREFIX + "/RobotSimIn", t, result.robotSimIn);

@@ -5,7 +5,7 @@
 // license that can be found in the LICENSE file
 // at the root directory of this project.
 
-import { AutoCheckResult } from "../shared/physics/AutoShotCheck";
+import { AutoCheckResult, describeMouthOffset, describeTune } from "../shared/physics/AutoShotCheck";
 
 /** The latest Auto Check, so the Telemetry tab's Markdown report can include it. */
 export interface StoredAutoCheck {
@@ -51,13 +51,24 @@ export function autoCheckMarkdown(check: StoredAutoCheck): string {
       r.range90[1] +
       " |"
   );
+  if (r.tunedExpectedIn > r.expectedIn + 0.05) {
+    lines.push(
+      "| With tuned exit speeds (Tune column) | " +
+        r.tunedExpectedIn.toFixed(1) +
+        " expected, 90% range " +
+        r.tunedRange90[0] +
+        "–" +
+        r.tunedRange90[1] +
+        " |"
+    );
+  }
   lines.push("");
   lines.push("Error sources: " + (check.errorSources.length > 0 ? check.errorSources.join(", ") : "none") + ".");
   lines.push("");
   lines.push(
-    "| # | Time | CELL | Exit speed | Angle | Robot speed | Robot sim | No spin | Magnus | Spin moves it (up the mouth) | Chance in |"
+    "| # | Time | CELL | Exit speed | Angle | Robot speed | Robot sim | No spin | Magnus | Spin moves it (up the mouth) | Crosses the mouth | Chance in | Tune |"
   );
-  lines.push("|---:|---:|---|---:|---:|---:|---|---|---|---:|---:|");
+  lines.push("|---:|---:|---|---:|---:|---:|---|---|---|---:|---|---:|---|");
   r.shots.forEach((s, i) => {
     const cell = s.shot.cell === null ? "—" : s.shot.cell.alliance + " " + s.shot.cell.hiveCell;
     const robotSpeed = Math.hypot(s.shot.robotVelocity[0], s.shot.robotVelocity[1]);
@@ -83,7 +94,11 @@ export function autoCheckMarkdown(check: StoredAutoCheck): string {
         " | " +
         (isFinite(s.magnusShift) ? (s.magnusShift * 100).toFixed(1) + " cm" : "—") +
         " | " +
+        describeMouthOffset(s.mouthOffset, s.mouthHalfHeight) +
+        " | " +
         pct(s.pIn) +
+        " | " +
+        describeTune(s.exitSpeed, s.tunedExitSpeed, s.pIn, s.tunedPIn) +
         " |"
     );
   });

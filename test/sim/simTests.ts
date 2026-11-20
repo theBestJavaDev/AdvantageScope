@@ -11,6 +11,7 @@
  * Each check states what would make it fail; exits non-zero if any check fails.
  */
 
+import { centeringExitSpeed } from "../../src/shared/physics/AutoShotCheck";
 import { computeSolution, fireShot } from "../../src/shared/physics/DriveShooting";
 import { DEFAULT_DRIVETRAIN, advanceDrive, makeDriveState, robotCorners } from "../../src/shared/physics/DriveSim";
 import { BIOBUZZ, cellMouth } from "../../src/shared/physics/GamePresets";
@@ -243,6 +244,19 @@ function check(name: string, ok: boolean, info = "") {
     `Cd ${fit.dragCoefficient.toFixed(3)}`
   );
   check("drop test 1 m -> 0.36 m gives e = 0.6", Math.abs((fitRestitution(1, 0.36) ?? 0) - 0.6) < 1e-9);
+}
+
+// ---------------------------------------------------------------- Auto Check tuning
+{
+  const scenario = buildScenario(defaultShotLabConfig());
+  scenario.shooter.exitSpeed *= 0.97; // start a little off center
+  const tuned = centeringExitSpeed(scenario, false);
+  const miss = measureMiss({ ...scenario, shooter: { ...scenario.shooter, exitSpeed: tuned } });
+  check(
+    "tuned exit speed centers the shot in the CELL mouth",
+    isFinite(tuned) && Math.abs(miss.range) < 0.005,
+    `${tuned.toFixed(3)} m/s, ${(miss.range * 100).toFixed(2)} cm from the middle`
+  );
 }
 
 console.log("\n" + passes + " passed, " + failures + " failed");

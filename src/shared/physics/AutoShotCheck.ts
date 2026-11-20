@@ -14,7 +14,9 @@
  *    hood, turret, spin, release latency, localization, velocity estimate, launch height, game
  *    piece variation, air, defense).
  *
- * The result is a hit chance per shot and the distribution of POLLEN scored for the whole auto.
+ * The result is a hit chance per shot and the distribution of POLLEN scored for the whole auto, plus a
+ * tuning hint per shot: the exit speed that puts the spinning piece in the middle of the CELL mouth,
+ * and the hit chance at that speed.
  * Pure (no DOM) so it runs in a worker and in tests. Positions are in the sim field frame
  * (GamePresets.ts): center origin, +X toward the blue wall, +Y away from the audience.
  */
@@ -76,6 +78,14 @@ export interface AutoShotResult {
   /** Chance it goes in with match error. */
   pIn: number;
   pInInterval: [number, number];
+  /** Where the spinning piece crosses the CELL mouth, from its middle (m, + = high). NaN: never reaches it. */
+  mouthOffset: number;
+  /** Half the mouth's height along its face (m): |mouthOffset| beyond this is a miss. */
+  mouthHalfHeight: number;
+  /** Exit speed that puts the spinning piece in the middle of the mouth (m/s); NaN if none nearby. */
+  tunedExitSpeed: number;
+  /** Chance it goes in with match error at the tuned speed (NaN without one). */
+  tunedPIn: number;
 }
 
 export interface AutoCheckResult {
@@ -90,7 +100,39 @@ export interface AutoCheckResult {
   distribution: number[];
   /** 5th and 95th percentile of POLLEN in. */
   range90: [number, number];
+  /** Same with every shot at its tuned exit speed (shots without one keep their chance). */
+  tunedExpectedIn: number;
+  tunedRange90: [number, number];
   durationMs: number;
+}
+
+/** Scenario with a different exit speed; "rolling" spin follows the speed. */
+function withExitSpeed(scenario: ShotScenario, exitSpeed: number, rollingSpin: boolean): ShotScenario {
+  const spinRpm = rollingSpin
+    ? (scenario.shooter.spinRpm * exitSpeed) / scenario.shooter.exitSpeed
+    : scenario.shooter.spinRpm;
+  return { ...scenario, shooter: { ...scenario.shooter, exitSpeed, spinRpm } };
+}
+
+/**
+ * Exit speed (within +-15%) that centers the piece in the CELL mouth. Faster crosses higher on the
+ * mouth face; a shot that never reaches the mouth counts as low. NaN if it can't be bracketed.
+ */
+export function centeringExitSpeed(scenario: ShotScenario, rollingSpin: boolean): number {
+  const s0 = scenario.shooter.exitSpeed;
+  const offset = (speed: number) => {
+    const miss = measureMiss(withExitSpeed(scenario, speed, rollingSpin));
+    return miss.tooLow || !isFinite(miss.range) ? -Infinity : miss.range;
+  };
+  let lo = 0.85 * s0;
+  let hi = 1.15 * s0;
+  if (offset(lo) > 0 || offset(hi) < 0) return NaN;
+  for (let i = 0; i < 22; i++) {
+    const mid = (lo + hi) / 2;
+    if (offset(mid) < 0) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
 }
 
 function targetFor(config: ShotLabConfig, cell: AutoShot["cell"]): TargetZone | null {
@@ -152,6 +194,32 @@ function flyNominal(scenario: ShotScenario): { hit: boolean; crossing: Vector3 |
   return { hit: result.target?.hit ?? false, crossing: result.crossing };
 }
 
+/** Where it crosses the mouth: "+3.1 cm high" style, or "short" when it never gets there. */
+export function describeMouthOffset(offset: number, half: number): string {
+  if (!isFinite(offset)) return "short";
+  const cm = (offset * 100).toFixed(1);
+  const side = Math.abs(offset) < 0.01 ? "center" : offset > 0 ? "high" : "low";
+  const out = isFinite(half) && Math.abs(offset) > half ? " (out)" : "";
+  return (offset >= 0 ? "+" : "") + cm + " cm " + side + out;
+}
+
+/** Tuning hint: exit speed change and the chance it gives, or "keep" when it doesn't help. */
+export function describeTune(exit: number, tuned: number, pIn: number, tunedPIn: number): string {
+  if (!isFinite(tuned) || !isFinite(tunedPIn)) return "—";
+  if (tunedPIn <= pIn + 0.02) return "keep";
+  const d = tuned - exit;
+  return (
+    (d >= 0 ? "+" : "") +
+    d.toFixed(2) +
+    " m/s (" +
+    (d >= 0 ? "+" : "") +
+    ((d / exit) * 100).toFixed(1) +
+    "%) → " +
+    Math.round(tunedPIn * 100) +
+    "%"
+  );
+}
+
 /** Poisson-binomial: P(exactly k of the independent shots go in). */
 export function countDistribution(probabilities: number[]): number[] {
   let dist = [1];
@@ -208,7 +276,11 @@ export function analyzeAutoShots(
         spinHit: false,
         magnusShift: NaN,
         pIn: NaN,
-        pInInterval: [NaN, NaN]
+        pInInterval: [NaN, NaN],
+        mouthOffset: NaN,
+        mouthHalfHeight: NaN,
+        tunedExitSpeed: NaN,
+        tunedPIn: NaN
       });
       return;
     }
@@ -219,10 +291,12 @@ export function analyzeAutoShots(
     // How far spin moves the impact: on a CELL mouth, up/down the mouth face (+ = higher); otherwise
     // along the shot at the target plane (+ = longer)
     let magnusShift = NaN;
+    let mouthOffset = NaN;
     if (target.mouth !== undefined) {
       const a = measureMiss(scenarioForShot(shot, config, { mode: "none", rpm: 0 }, target));
       const b = measureMiss(spinScenario);
       if (isFinite(a.range) && isFinite(b.range)) magnusShift = b.range - a.range;
+      if (!b.tooLow && isFinite(b.range)) mouthOffset = b.range;
     } else if (noSpin.crossing !== null && withSpin.crossing !== null) {
       const h = Math.hypot(relative[0], relative[1]) || 1;
       const ux = relative[0] / h;
@@ -230,12 +304,24 @@ export function analyzeAutoShots(
       magnusShift = (withSpin.crossing[0] - noSpin.crossing[0]) * ux + (withSpin.crossing[1] - noSpin.crossing[1]) * uy;
     }
 
-    const mc = runMonteCarlo(spinScenario, model, {
+    const mcOptions = {
       samples: Math.max(10, Math.round(opts.samples)),
       seed: opts.seed + index * 7919,
       burstSize: 1,
       keepTrajectories: 0
-    });
+    };
+    const mc = runMonteCarlo(spinScenario, model, mcOptions);
+
+    // Tuning hint: the speed that centers it in the mouth, and its chance there (same random draws)
+    let tunedExitSpeed = NaN;
+    let tunedPIn = NaN;
+    if (target.mouth !== undefined) {
+      tunedExitSpeed = centeringExitSpeed(spinScenario, opts.spinRpm === "rolling");
+      if (isFinite(tunedExitSpeed)) {
+        const tuned = withExitSpeed(spinScenario, tunedExitSpeed, opts.spinRpm === "rolling");
+        tunedPIn = runMonteCarlo(tuned, model, mcOptions).hitRate;
+      }
+    }
     results.push({
       shot,
       exitSpeed,
@@ -245,7 +331,11 @@ export function analyzeAutoShots(
       spinHit: withSpin.hit,
       magnusShift,
       pIn: mc.hitRate,
-      pInInterval: mc.hitRateInterval
+      pInInterval: mc.hitRateInterval,
+      mouthOffset,
+      mouthHalfHeight: target.mouth?.halfV ?? NaN,
+      tunedExitSpeed,
+      tunedPIn
     });
   });
 
@@ -253,6 +343,11 @@ export function analyzeAutoShots(
   const distribution = countDistribution(probabilities);
   const expectedIn = probabilities.reduce((a, b) => a + b, 0);
   const variance = probabilities.reduce((a, p) => a + p * (1 - p), 0);
+  // Tuned: each shot at its centering speed, but never worse than as fired (a tune you'd keep)
+  const tunedProbabilities = results.map((r, i) =>
+    isFinite(r.tunedPIn) ? Math.max(r.tunedPIn, probabilities[i]) : probabilities[i]
+  );
+  const tunedDistribution = countDistribution(tunedProbabilities);
   return {
     shots: results,
     robotSimIn: shots.filter((s) => s.robotSimResult === "in").length,
@@ -262,6 +357,8 @@ export function analyzeAutoShots(
     stdDevIn: Math.sqrt(variance),
     distribution,
     range90: [percentile(distribution, 0.05), percentile(distribution, 0.95)],
+    tunedExpectedIn: tunedProbabilities.reduce((a, b) => a + b, 0),
+    tunedRange90: [percentile(tunedDistribution, 0.05), percentile(tunedDistribution, 0.95)],
     durationMs: Date.now() - start
   };
 }

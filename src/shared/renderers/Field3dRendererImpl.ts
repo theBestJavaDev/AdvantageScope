@@ -13,12 +13,6 @@ import { Rotation3d, rotationSequenceToQuaternion } from "../geometry";
 import { themeColor } from "../themeColors";
 import { Units } from "../units";
 import { checkArrayType, clampValue } from "../util";
-import {
-  Field3dRendererCommand,
-  Field3dRendererCommand_AnyObj,
-  Field3dRendererCommand_RobotObj
-} from "./Field3dRenderer";
-import TabRenderer from "./TabRenderer";
 import makeAxesField from "./field3d/AxesField";
 import makeEvergreenField from "./field3d/EvergreenField";
 import ObjectManager from "./field3d/ObjectManager";
@@ -29,6 +23,13 @@ import GamePieceManager from "./field3d/objectManagers/GamePieceManager";
 import HeatmapManager from "./field3d/objectManagers/HeatmapManager";
 import RobotManager from "./field3d/objectManagers/RobotManager";
 import TrajectoryManager from "./field3d/objectManagers/TrajectoryManager";
+import SolversArena from "./field3d/SolversArena";
+import {
+  Field3dRendererCommand,
+  Field3dRendererCommand_AnyObj,
+  Field3dRendererCommand_RobotObj
+} from "./Field3dRenderer";
+import TabRenderer from "./TabRenderer";
 
 export const FTC_GRID_COLOR = "#888";
 
@@ -133,6 +134,8 @@ export default class Field3dRendererImpl implements TabRenderer {
   private lastDevicePixelRatio: number | null = null;
   private lastIsDark: boolean | null = null;
   private lastBackground: string | null = null;
+  /** SolversScope backdrop: dome, floor and fog in the team colors. */
+  private arena = new SolversArena();
   private lastCommandString: string = "";
   private lastAssets: AdvantageScopeAssets | null = null;
   private lastFieldId: string = "";
@@ -200,6 +203,8 @@ export default class Field3dRendererImpl implements TabRenderer {
     this.wpilibCoordinateGroup.rotation.setFromQuaternion(this.WPILIB_ROTATION);
     this.wpilibFieldCoordinateGroup = new THREE.Group();
     this.wpilibCoordinateGroup.add(this.wpilibFieldCoordinateGroup);
+    this.wpilibCoordinateGroup.add(this.arena.group);
+    this.scene.fog = this.arena.getFog();
 
     // Create camera
     {
@@ -1040,6 +1045,7 @@ export default class Field3dRendererImpl implements TabRenderer {
       this.lastBackground = background;
       this.scene.background = new THREE.Color(background);
     }
+    this.arena.update(background, themeColor("--ss-accent", "#f2ce00"), isDark);
     this.renderer.setPixelRatio(devicePixelRatio);
     this.renderer.render(this.scene, this.camera);
   }

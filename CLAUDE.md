@@ -94,6 +94,10 @@ SolversScope watches). Per-computer setup:
   saved through the `export-telemetry-report` main-process message.
 - **Plain mode:** View → Plain AdvantageScope Mode (`plainMode` pref) hides the SolversScope tabs from New Tab, closes
   open ones, and skips the Auto Check tab on sim logs (`SOLVERS_TAB_TYPES` in `TabType.ts`, `removeSolversTabs` in `simLayout.ts`).
+- **Auto Check tuning:** each shot also gets where it crosses the CELL mouth (with spin) and the exit speed that
+  centers it (`centeringExitSpeed`), with its hit chance under match error ("Tune" column, "With tuned speeds" card).
+- **3D backdrop:** `src/shared/renderers/field3d/SolversArena.ts` (dome, lit floor, gold grid, fog in the theme
+  colors). Mix colors in sRGB there (`mix`): lerping `THREE.Color` in linear space turns dark tints gray/olive.
 - **Theme:** black and gold by default. "Match System" (the old default) also shows dark; only Preferences → Light
   gives the light theme (`solversThemeSource` in `main.ts`).
 - **Robot CAD:** when a sim log's robot is on a generic model (stock Drive Base/KitBot) or a missing one,

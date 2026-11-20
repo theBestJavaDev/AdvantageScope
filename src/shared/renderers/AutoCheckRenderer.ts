@@ -5,7 +5,7 @@
 // license that can be found in the LICENSE file
 // at the root directory of this project.
 
-import { AutoCheckResult } from "../physics/AutoShotCheck";
+import { AutoCheckResult, describeMouthOffset, describeTune } from "../physics/AutoShotCheck";
 import TabRenderer from "./TabRenderer";
 
 export type AutoCheckRendererCommand = {
@@ -100,6 +100,14 @@ export default class AutoCheckRenderer implements TabRenderer {
       "expected · 90% range " + r.range90[0] + "–" + r.range90[1],
       r.expectedIn >= 0.85 * n ? "good" : r.expectedIn < 0.6 * n ? "bad" : ""
     );
+    if (r.tunedExpectedIn > r.expectedIn + 0.05) {
+      card(
+        "With tuned speeds",
+        r.tunedExpectedIn.toFixed(1) + " / " + n,
+        "+" + (r.tunedExpectedIn - r.expectedIn).toFixed(1) + " · each shot centered in the mouth (Tune column)",
+        "good"
+      );
+    }
 
     // Distribution of POLLEN scored
     const peak = Math.max(...r.distribution);
@@ -127,6 +135,37 @@ export default class AutoCheckRenderer implements TabRenderer {
     this.ERRORS.textContent =
       "Error sources (from Shot Lab): " + (command.errorSources.length > 0 ? command.errorSources.join(" · ") : "none");
 
+    // One-line takeaway: where the shots cross the mouth on average and the speed change that centers them
+    const crossing = r.shots.filter((s) => isFinite(s.mouthOffset));
+    const tuned = r.shots.filter((s) => isFinite(s.tunedExitSpeed));
+    if (crossing.length > 0 && tuned.length > 0 && r.tunedExpectedIn > r.expectedIn + 0.05) {
+      const avgOffset = crossing.reduce((a, s) => a + s.mouthOffset, 0) / crossing.length;
+      const avgChange = tuned.reduce((a, s) => a + (s.tunedExitSpeed - s.exitSpeed) / s.exitSpeed, 0) / tuned.length;
+      const low = crossing.filter((s) => s.mouthOffset < 0).length;
+      const where =
+        low === crossing.length
+          ? "All " + low + " shots cross the mouth low"
+          : low === 0
+          ? "All " + crossing.length + " shots cross the mouth high"
+          : low + " of " + crossing.length + " shots cross the mouth low";
+      const hint = document.createElement("div");
+      hint.className = "autocheck-hint";
+      hint.textContent =
+        where +
+        " (average " +
+        (avgOffset >= 0 ? "+" : "") +
+        (avgOffset * 100).toFixed(1) +
+        " cm from the middle). Exit speed " +
+        (avgChange >= 0 ? "+" : "") +
+        (avgChange * 100).toFixed(1) +
+        "% on average centers them: " +
+        r.expectedIn.toFixed(1) +
+        " → " +
+        r.tunedExpectedIn.toFixed(1) +
+        " expected with match error.";
+      this.TABLE.appendChild(hint);
+    }
+
     // Per-shot table
     const table = document.createElement("table");
     table.className = "autocheck-shots";
@@ -142,7 +181,9 @@ export default class AutoCheckRenderer implements TabRenderer {
       "No spin",
       "Magnus",
       "Spin moves it (up the mouth)",
-      "Chance in"
+      "Crosses the mouth",
+      "Chance in",
+      "Tune"
     ].forEach((h) => {
       const th = document.createElement("th");
       th.textContent = h;
@@ -161,7 +202,8 @@ export default class AutoCheckRenderer implements TabRenderer {
         s.shot.robotSimResult.toUpperCase(),
         s.noSpinHit ? "IN" : "MISS",
         s.spinHit ? "IN" : "MISS",
-        isFinite(s.magnusShift) ? (s.magnusShift >= 0 ? "+" : "") + (s.magnusShift * 100).toFixed(1) + " cm" : "—"
+        isFinite(s.magnusShift) ? (s.magnusShift >= 0 ? "+" : "") + (s.magnusShift * 100).toFixed(1) + " cm" : "—",
+        describeMouthOffset(s.mouthOffset, s.mouthHalfHeight)
       ];
       cells.forEach((c, j) => {
         const td = row.insertCell();
@@ -177,6 +219,9 @@ export default class AutoCheckRenderer implements TabRenderer {
       const text = document.createElement("span");
       text.textContent = pct(s.pIn);
       chance.append(bar, text);
+      const tune = row.insertCell();
+      tune.textContent = describeTune(s.exitSpeed, s.tunedExitSpeed, s.pIn, s.tunedPIn);
+      tune.className = tune.textContent.includes("→") ? "tune" : "";
     });
     this.TABLE.appendChild(table);
   }
