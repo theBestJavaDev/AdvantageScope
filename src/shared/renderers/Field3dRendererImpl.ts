@@ -7,9 +7,9 @@
 
 import CameraControls from "camera-controls";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import WorkerManager from "../../hub/WorkerManager";
 import { AdvantageScopeAssets, BuiltIn3dFields, Config3dField, CoordinateSystem } from "../AdvantageScopeAssets";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Rotation3d, rotationSequenceToQuaternion } from "../geometry";
 import { themeColor } from "../themeColors";
 import { Units } from "../units";
@@ -64,7 +64,7 @@ export default class Field3dRendererImpl implements TabRenderer {
     [-2, 1.5, 4, 0, -1, 0]
   ] as const;
   private SPOT_LIGHT_INTENSITY_FRC = 250;
-  private SPOT_LIGHT_INTENSITY_FTC = 60;
+  private SPOT_LIGHT_INTENSITY_FTC = 35;
   private WPILIB_ROTATION = rotationSequenceToQuaternion([
     {
       axis: "x",
@@ -170,7 +170,7 @@ export default class Field3dRendererImpl implements TabRenderer {
     this.renderer.shadowMap.enabled = mode === "cinematic";
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if (mode === "cinematic") {
-      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMapping = THREE.NoToneMapping;
       this.renderer.toneMappingExposure = 1.15;
     }
     this.scene = new THREE.Scene();
@@ -182,7 +182,7 @@ export default class Field3dRendererImpl implements TabRenderer {
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         const room = new RoomEnvironment();
         this.scene.environment = pmrem.fromScene(room, 0.03).texture;
-        this.scene.environmentIntensity = 0.55;
+        this.scene.environmentIntensity = 0.35;
         room.dispose();
         pmrem.dispose();
       } catch (error) {

@@ -261,6 +261,16 @@ export default class Field3dController implements TabController {
   }
 
   getCommand(): Field3dRendererCommand {
+    // Keep the 3D Quality Mode menu showing the mode in use (preferences arrive after this tab is built)
+    if (
+      this.FIELD_MODE_SELECT &&
+      window.preferences &&
+      document.activeElement !== this.FIELD_MODE_SELECT &&
+      this.FIELD_MODE_SELECT.value !== window.preferences.field3dModeAc
+    ) {
+      this.FIELD_MODE_SELECT.value = window.preferences.field3dModeAc;
+    }
+
     // Get timestamp
     let time = window.selection.getRenderTime();
 
