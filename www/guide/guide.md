@@ -167,7 +167,11 @@ Click **+** → **Drive Sim**, then click on the field.
 | **Shift**   | slow mode            |
 | **F**       | field-centric on/off |
 | **R**       | reset the robot      |
-| **C**       | clear shots          |
+| **C**       | clear shots and reload |
+
+Like a real robot, yours holds at most **4** POLLEN (the chip at the top says **HOLDING 4 / 4**). Every shot uses
+one up. When it says **EMPTY**, drive the front of the robot over a ball that missed to pick it back up. Balls that
+scored are in the CELL and can't be picked up. **C** reloads you with 4.
 
 A gamepad works too. **▶ Live 3D view** opens a 3D window that follows your driving. If it says **"Can't score from
 here"**, drive in front of the CELL's open side (the **MOUTH** arrow).

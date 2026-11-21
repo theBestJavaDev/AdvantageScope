@@ -30,6 +30,7 @@ import {
   simToLogHeading,
   simToLogTranslation
 } from "../../shared/physics/GamePresets";
+import { HOLD_CAPACITY, collectPieces } from "../../shared/physics/Intake";
 import { FTC_FIELD } from "../../shared/physics/PhysicsEngine";
 import { ShotLabConfig } from "../../shared/physics/ShotLab";
 import { Random } from "../../shared/physics/vector";
@@ -40,6 +41,7 @@ import { FormSection, SimForm, getSharedShotLabConfig } from "./SimForm";
 import TabController from "./TabController";
 
 const DEG = Math.PI / 180;
+
 export const DRIVE_SIM_LOG_PREFIX = "/SolversSim/Drive";
 
 export interface DriveSimConfig {
@@ -275,6 +277,8 @@ export default class DriveSimController implements TabController {
   /** Shots whose result is known (scored in the HUD). */
   private shotCount = 0;
   private firedCount = 0;
+  /** POLLEN in the robot. It starts with its 4 preloads (G304) and can hold at most 4 (G407). */
+  private held = HOLD_CAPACITY;
   private hitCount = 0;
   private nextShotId = 0;
   private lastShotTime = -Infinity;
@@ -323,7 +327,7 @@ export default class DriveSimController implements TabController {
       this.resetRobot();
       this.CANVAS.focus();
     });
-    this.form.addAction("Clear shots", "Clear the score and the pieces on the field (C)", false, () => {
+    this.form.addAction("Clear shots", "Clear the score and the pieces on the field, and reload the robot with 4 (C)", false, () => {
       this.clearShots();
       this.CANVAS.focus();
     });
@@ -397,6 +401,27 @@ export default class DriveSimController implements TabController {
     this.shotCount = 0;
     this.firedCount = 0;
     this.hitCount = 0;
+    this.held = HOLD_CAPACITY;
+  }
+
+  /** Intake: the robot picks up missed pieces it drives over (see Intake.ts). */
+  private collectPieces() {
+    const result = collectPieces(
+      this.rests,
+      this.state,
+      this.config.drivetrain,
+      this.held,
+      this.shotConfig.piece.diameterM / 2
+    );
+    if (result.picked === 0) return;
+    this.rests = result.pieces;
+    this.held = result.held;
+    this.feed.unshift({
+      text: "Picked up · holding " + this.held + " / " + HOLD_CAPACITY,
+      hit: true,
+      time: this.state.time
+    });
+    this.feed = this.feed.slice(0, 5);
   }
 
   /**
@@ -585,6 +610,7 @@ export default class DriveSimController implements TabController {
         this.preset()?.obstacles ?? []
       );
     }
+    this.collectPieces();
     const t = this.state.time;
 
     // Shot solution for the HUD/aim line (cheap enough at ~8 Hz)
@@ -594,7 +620,11 @@ export default class DriveSimController implements TabController {
     }
 
     // Fire
-    if (input.shoot && t - this.lastShotTime >= 1 / Math.max(0.1, this.config.shooting.shotsPerSecond)) {
+    if (
+      input.shoot &&
+      this.held > 0 &&
+      t - this.lastShotTime >= 1 / Math.max(0.1, this.config.shooting.shotsPerSecond)
+    ) {
       // Back-to-back shots drain the flywheel (shotIndex feeds the flywheel recovery error source)
       this.burstIndex = t - this.lastShotTime < 1.0 ? this.burstIndex + 1 : 0;
       const solution = computeSolution(this.shotConfig, this.state, this.config.shooting);
@@ -610,6 +640,7 @@ export default class DriveSimController implements TabController {
       );
       this.shots.push({ ...shot, revealed: false });
       this.firedCount++;
+      this.held--;
       this.lastShotTime = t;
       if (this.recording) this.recordShot(shot);
     }
@@ -695,6 +726,7 @@ export default class DriveSimController implements TabController {
     log.putNumber(P + "/TargetDistance", t, this.solution.distance);
     log.putNumber(P + "/TurretYawDeg", t, this.solution.turretYawDeg);
     log.putNumber(P + "/Shots/Fired", t, this.firedCount);
+    log.putNumber(P + "/Held", t, this.held);
     log.putNumber(P + "/Shots/Hits", t, this.hitCount);
     log.putTranslation3dArray(
       P + "/GamePieces",
@@ -834,6 +866,8 @@ export default class DriveSimController implements TabController {
         input: this.inputSource,
         shots: this.shotCount,
         hits: this.hitCount,
+        held: this.held,
+        capacity: HOLD_CAPACITY,
         solution: { valid: this.solution.valid, exitSpeed: this.solution.exitSpeed, distance: this.solution.distance },
         aim: this.config.shooting.aim as AimMode,
         battery: isFinite(s.batteryVolts) ? s.batteryVolts : d.batteryVolts,

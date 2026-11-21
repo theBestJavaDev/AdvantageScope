@@ -89,6 +89,8 @@ export default function optimizeGeometries(
   normal: THREE.Mesh[];
   transparent: THREE.Mesh[];
   carpet: THREE.Mesh[];
+  /** Cinematic only: the HIVE frame's two sticker plates, kept apart so they can carry the BIOBUZZ sign. */
+  sign: THREE.Mesh[];
 } {
   let geometries = getGeometries(object, mode, enableSimplification, isFTC, slicingSize);
 
@@ -137,11 +139,20 @@ export default function optimizeGeometries(
       }
     }
   });
+  let signMeshes: THREE.Mesh[] = [];
+  geometries.sign.forEach((geometry) => {
+    let mesh = new THREE.Mesh(geometry, makeMaterial("normal", mode, materialSpecular, materialShininess));
+    mesh.name = "sign";
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    signMeshes.push(mesh);
+  });
   disposeObject(object);
   return {
     normal: normalMeshes,
     transparent: transparentMeshes,
-    carpet: carpetMeshes
+    carpet: carpetMeshes,
+    sign: signMeshes
   };
 }
 
@@ -151,7 +162,13 @@ function getGeometries(
   enableSimplification: boolean,
   isFTC: boolean,
   slicingSize?: number
-): { normal: THREE.BufferGeometry[][]; transparent: THREE.BufferGeometry[][]; carpet: THREE.BufferGeometry[][] } {
+): {
+  normal: THREE.BufferGeometry[][];
+  transparent: THREE.BufferGeometry[][];
+  carpet: THREE.BufferGeometry[][];
+  sign: THREE.BufferGeometry[];
+} {
+  let sign: THREE.BufferGeometry[] = [];
   let normal: THREE.BufferGeometry[][] = [];
   let transparent: THREE.BufferGeometry[][] = [];
   let carpet: THREE.BufferGeometry[][] = [];
@@ -231,6 +248,12 @@ function getGeometries(
         }
       }
 
+      // Cinematic: the HIVE sticker plates stay separate meshes (FtcFieldDetail gives them the BIOBUZZ sign)
+      if (mode === "cinematic" && mesh.name.includes("Panel Sticker")) {
+        sign.push(geometry);
+        return;
+      }
+
       // Save final geometry
       if (include) {
         let outputIndex = 0;
@@ -260,6 +283,7 @@ function getGeometries(
   return {
     normal: normal,
     transparent: transparent,
-    carpet: carpet
+    carpet: carpet,
+    sign: sign
   };
 }

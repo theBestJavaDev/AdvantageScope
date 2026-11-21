@@ -21,6 +21,7 @@ import { setLatestAutoCheck } from "../autoCheckStore";
 import { extractAutoShots, isRobotSimLog } from "../autoShotExtract";
 import WorkerManager from "../WorkerManager";
 import { getSharedShotLabConfig } from "./SimForm";
+import { POLLEN_LIST_KEY, applyMissMask, usePollenSource } from "../missMask";
 import TabController from "./TabController";
 
 const LOG_PREFIX = "/SolversSim/AutoCheck";
@@ -54,6 +55,14 @@ type State = { samples: number; spin: "backspin" | "topspin" | "none" };
  * robot fired with Magnus and with the Shot Lab error model, automatically, and shows the hit
  * chance per shot and the POLLEN scored distribution.
  */
+/** True when the robot-code sim was run with a real shooter's error (`Sim/Launch/shotError`). */
+function simHasShotError(): boolean {
+  const key = "RealOutputs/Sim/Launch/shotError";
+  if (!window.log.getFieldKeys().includes(key)) return false;
+  const set = window.log.getBoolean(key, -Infinity, Infinity);
+  return set !== undefined && set.values.length > 0 && set.values[set.values.length - 1];
+}
+
 export default class AutoCheckController implements TabController {
   UUID = createUUID();
 
@@ -255,6 +264,22 @@ export default class AutoCheckController implements TabController {
    */
   private newRandomMatch() {
     if (this.lastRun === null || !isRobotSimLog()) return;
+    if (simHasShotError()) {
+      // The sim already shoots like a real robot (some balls miss and are simply not in the CELL), so this log IS
+      // the match: report its own results and draw nothing on top of it
+      window.log.deleteFieldsWithPrefix(LOG_PREFIX + "/Match");
+      usePollenSource(POLLEN_LIST_KEY);
+      const shots = this.lastRun.shots;
+      this.command = {
+        ...this.command,
+        match: {
+          inCount: shots.filter((s) => s.robotSimResult === "in").length,
+          total: shots.length,
+          missed: shots.flatMap((s, i) => (s.robotSimResult === "miss" ? [i + 1] : []))
+        }
+      };
+      return;
+    }
     const match = simulateRandomMatch(this.lastRun.shots, getSharedShotLabConfig(), this.lastRun.options);
     this.writeMatch(match);
     this.command = {
@@ -302,6 +327,11 @@ export default class AutoCheckController implements TabController {
         });
       }
     }
+    // The log's own ball for a missed shot would still sit in the CELL: hide it
+    const shots = this.lastRun?.shots ?? [];
+    applyMissMask(
+      match.shots.filter((s) => !s.hit).map((s) => ({ time: s.time, ballId: shots[s.index]?.ballId ?? null }))
+    );
     window.sidebar.refresh();
   }
 

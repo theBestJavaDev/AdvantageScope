@@ -122,3 +122,5 @@ build/*
 *.pbxuser
 *.mode1v3
 xcuserdata
+# FIRST / RTX artwork from the field CAD: not committed (the field CAD must not be redistributed)
+/www/textures/biobuzz-sign.webp

@@ -12,6 +12,7 @@
  */
 
 import { centeringExitSpeed } from "../../src/shared/physics/AutoShotCheck";
+import { HOLD_CAPACITY, collectPieces } from "../../src/shared/physics/Intake";
 import { computeSolution, fireShot } from "../../src/shared/physics/DriveShooting";
 import { DEFAULT_DRIVETRAIN, advanceDrive, makeDriveState, robotCorners } from "../../src/shared/physics/DriveSim";
 import { BIOBUZZ, cellMouth } from "../../src/shared/physics/GamePresets";
@@ -396,6 +397,25 @@ function check(name: string, ok: boolean, info = "") {
     isFinite(tuned) && Math.abs(miss.range) < 0.005,
     `${tuned.toFixed(3)} m/s, ${(miss.range * 100).toFixed(2)} cm from the middle`
   );
+}
+
+// ---------------------------------------------------------------- Holding at most 4 (G407), picking misses back up
+{
+  const cfg = DEFAULT_DRIVETRAIN;
+  const robot = makeDriveState(0, 0, 0);
+  const r = 0.036;
+  const ahead = { x: cfg.length / 2 + 0.05, y: 0, hit: false };
+  const taken = collectPieces([ahead], robot, cfg, 2, r);
+  check("driving the front over a missed piece picks it up", taken.picked === 1 && taken.held === 3 && taken.pieces.length === 0);
+  check("a piece far from the robot is left alone", collectPieces([{ x: 1, y: 1, hit: false }], robot, cfg, 0, r).picked === 0);
+  check("a piece beside the robot is left alone", collectPieces([{ x: 0, y: cfg.width / 2 + 0.2, hit: false }], robot, cfg, 0, r).picked === 0);
+  check("a piece behind the robot is left alone", collectPieces([{ x: -cfg.length / 2 - 0.2, y: 0, hit: false }], robot, cfg, 0, r).picked === 0);
+  check("a piece that scored (in the CELL) can't be picked up", collectPieces([{ ...ahead, hit: true }], robot, cfg, 0, r).picked === 0);
+  const full = collectPieces([ahead], robot, cfg, HOLD_CAPACITY, r);
+  check("a full robot picks nothing up", full.picked === 0 && full.held === HOLD_CAPACITY && full.pieces.length === 1);
+  const pile = [0, 1, 2, 3, 4, 5].map((i) => ({ x: i * 0.01, y: 0, hit: false }));
+  const some = collectPieces(pile, robot, cfg, 1, r);
+  check("it stops at 4 held and leaves the rest", some.held === HOLD_CAPACITY && some.picked === 3 && some.pieces.length === 3, some.held + " held");
 }
 
 console.log("\n" + passes + " passed, " + failures + " failed");

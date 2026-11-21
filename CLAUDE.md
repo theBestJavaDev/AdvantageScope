@@ -98,6 +98,17 @@ SolversScope watches). Per-computer setup:
   draw of the error model (`simulateRandomMatch`) and writes the misses to `/SolversSim/AutoCheck/Match/*`
   (POLLEN positions + 4 red trail slots); `simLayout.addMatchMissesSource` adds them to the sim 3D view. "🎲 New
   random match" rerolls. Don't draw misses as red balls: BioBuzz has red NECTAR.
+- **Real misses vs the random match:** the robot repo's `simAuto` / green-arrow runs now give every launch a seeded shooter
+  error (`BioBuzzSim.useShotError`, logged as `Sim/Launch/shotError`), so a miss is a real ball that never loads the CELL and the
+  HIVE tips only on what is physically in it (186 g rule, `BioBuzzField`). When a log has that flag Auto Check reports the log's own
+  hits/misses and draws no random match. Older (perfect-robot) logs still get the random match; `src/hub/missMask.ts` then hides
+  the real ball of each missed shot (`Field/PollenById`, one slot per ball id) so the CELL doesn't also show it.
+- **Cinematic field detail:** `field3d/FtcFieldDetail.ts` (main thread, after the worker loads the field) puts a puzzle-tile texture
+  with thick seams on the floor ("carpet" meshes; seams on 24 in multiples) and the BIOBUZZ yellow trapezoid sign on the HIVE
+  frame's two "Panel Sticker" plates (kept as separate "sign" meshes by `OptimizeGeometries`, cinematic only). The sign art is drawn
+  in code: replace `makeSignCanvas` with the official artwork when it is available.
+- **Drive Sim ammo:** `Intake.ts`: the robot holds at most 4 (G407), a shot uses one, a miss lands on the floor and is picked up by
+  driving over it (HUD chip, `/Held` log).
 - **Auto Check tuning:** each shot also gets where it crosses the CELL mouth (with spin) and the exit speed that
   centers it (`centeringExitSpeed`), with its hit chance under match error ("Tune" column, "With tuned speeds" card).
 - **3D backdrop:** `src/shared/renderers/field3d/SolversArena.ts` (dome, lit floor, gold grid, fog in the theme

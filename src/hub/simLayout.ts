@@ -71,6 +71,52 @@ function restoreHiveModels() {
   if (changed) window.tabs.restoreState(state);
 }
 
+/**
+ * Saved 3D tabs can still point at `/SolversSim/Anim/<name>` sources (HIVE tips, POLLEN, NECTAR) that an older
+ * build wrote into the log. When this log has no such key the source draws nothing (the HIVEs vanish), so point it
+ * back at the log's own `RealOutputs/Field/<name>`.
+ */
+const STALE_ANIM_PREFIX = "/SolversSim/Anim/";
+/** NECTAR is its own game piece (red / blue, 3.6 in); older saved tabs drew it with the POLLEN model. */
+const NECTAR_VARIANTS: Record<string, string> = {
+  "RealOutputs/Field/NectarRed": "Nectar (Red)",
+  "RealOutputs/Field/NectarBlue": "Nectar (Blue)"
+};
+function restoreRealSources() {
+  const keys = new Set(window.log.getFieldKeys());
+  const state = window.tabs.saveState();
+  let changed = false;
+  for (const tab of state.tabs) {
+    if (tab.type !== TabType.Field3d) continue;
+    const controller = tab.controller as {
+      sources?: { logKey: string; options?: Record<string, string> }[];
+      game?: string;
+    } | null;
+    if (controller === null || !Array.isArray(controller.sources)) continue;
+    const field = (window.assets?.field3ds ?? []).find((f) => f.id === controller.game);
+    for (const source of controller.sources) {
+      if (source.logKey.startsWith(STALE_ANIM_PREFIX) && !keys.has(source.logKey)) {
+        const real = "RealOutputs/Field/" + source.logKey.slice(STALE_ANIM_PREFIX.length);
+        if (keys.has(real)) {
+          source.logKey = real;
+          changed = true;
+        }
+      }
+      const variant = NECTAR_VARIANTS[source.logKey];
+      if (
+        variant !== undefined &&
+        source.options !== undefined &&
+        source.options.variant !== variant &&
+        (field === undefined || field.gamePieces.some((piece) => piece.name === variant))
+      ) {
+        source.options.variant = variant;
+        changed = true;
+      }
+    }
+  }
+  if (changed) window.tabs.restoreState(state);
+}
+
 /** Auto Check's random match: missed shots (as POLLEN) and their red trails (AutoCheckController.MATCH_MISSES_KEY). */
 const MATCH_MISSES_KEY = "/SolversSim/AutoCheck/Match/Misses";
 const MATCH_TRAIL_KEYS = [0, 1, 2, 3].map((i) => "/SolversSim/AutoCheck/Match/Trail" + i);
@@ -279,6 +325,7 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
   }
 
   useTippingField();
+  restoreRealSources();
   restoreHiveModels();
   if (window.preferences?.plainMode) {
     removeSolversTabs();

@@ -70,6 +70,9 @@ export type DriveSimRendererCommand = {
     input: "keyboard" | "gamepad" | "none";
     shots: number;
     hits: number;
+    /** POLLEN in the robot, and the most it may hold. */
+    held: number;
+    capacity: number;
     solution: { valid: boolean; exitSpeed: number; distance: number };
     aim: "turret" | "fixed";
     battery: number;
@@ -795,6 +798,15 @@ export default class DriveSimRenderer implements TabRenderer {
     let chipX = 10;
     chipX += chip(ctx, colors, chipX, chipY, hud.fieldCentric ? "FIELD-CENTRIC" : "ROBOT-CENTRIC", colors.accent) + 6;
     if (hud.slow) chipX += chip(ctx, colors, chipX, chipY, "SLOW", colors.robot) + 6;
+    chipX +=
+      chip(
+        ctx,
+        colors,
+        chipX,
+        chipY,
+        hud.held > 0 ? "HOLDING " + hud.held + " / " + hud.capacity : "EMPTY · drive over a missed ball",
+        hud.held > 0 ? colors.hit : colors.miss
+      ) + 6;
     const inputText =
       hud.input === "gamepad" ? "GAMEPAD" : hud.gamepadConnected ? "KEYBOARD · GAMEPAD READY" : "KEYBOARD";
     chipX += chip(ctx, colors, chipX, chipY, inputText, colors.textDim) + 6;

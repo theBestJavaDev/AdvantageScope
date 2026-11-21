@@ -9,6 +9,7 @@ import CameraControls from "camera-controls";
 import * as THREE from "three";
 import WorkerManager from "../../hub/WorkerManager";
 import { AdvantageScopeAssets, BuiltIn3dFields, Config3dField, CoordinateSystem } from "../AdvantageScopeAssets";
+import { applyFtcFieldDetail } from "./field3d/FtcFieldDetail";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Rotation3d, rotationSequenceToQuaternion } from "../geometry";
 import { themeColor } from "../themeColors";
@@ -810,6 +811,9 @@ export default class Field3dRendererImpl implements TabRenderer {
         }).then((result) => {
           const loader = new THREE.ObjectLoader();
           this.field = loader.parse(result.field);
+          if (this.mode === "cinematic" && fieldConfig.isFTC) {
+            applyFtcFieldDetail(this.field, this.renderer.capabilities.getMaxAnisotropy());
+          }
           this.fieldStagedPieces = loader.parse(result.fieldStagedPieces);
           Object.entries(result.fieldPieces).forEach(([name, meshData]) => {
             newFieldPieces[name] = loader.parse(meshData) as THREE.Mesh;
