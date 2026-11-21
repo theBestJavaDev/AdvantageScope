@@ -34,6 +34,7 @@ export default class Field3dController implements TabController {
   private XR_BUTTON: HTMLButtonElement;
   private FIELD_SELECT: HTMLSelectElement;
   private FIELD_MODE_SELECT: HTMLSelectElement;
+  private THEME_SELECT: HTMLSelectElement;
 
   private sourceList: SourceList;
   private lastCoordinateSystemAlert: "none" | "frc" | "ftc" = "none";
@@ -48,6 +49,7 @@ export default class Field3dController implements TabController {
     this.XR_BUTTON = settings.getElementsByClassName("xr-button")[0] as HTMLButtonElement;
     this.FIELD_SELECT = settings.getElementsByClassName("field-select")[0] as HTMLSelectElement;
     this.FIELD_MODE_SELECT = settings.getElementsByClassName("field-mode-select")[0] as HTMLSelectElement;
+    this.THEME_SELECT = settings.getElementsByClassName("theme-select")[0] as HTMLSelectElement;
 
     if (this.FIELD_MODE_SELECT && window.preferences) {
       this.FIELD_MODE_SELECT.value = window.preferences.field3dModeAc;
@@ -56,6 +58,17 @@ export default class Field3dController implements TabController {
         if (window.preferences) {
           window.preferences.field3dModeAc = newMode;
           window.sendMainMessage("update-preferences", { field3dModeAc: newMode });
+        }
+      });
+    }
+
+    if (this.THEME_SELECT && window.preferences) {
+      this.THEME_SELECT.value = window.preferences.theme;
+      this.THEME_SELECT.addEventListener("change", () => {
+        let newTheme = this.THEME_SELECT.value as "light" | "dark" | "system";
+        if (window.preferences) {
+          window.preferences.theme = newTheme;
+          window.sendMainMessage("update-preferences", { theme: newTheme });
         }
       });
     }
