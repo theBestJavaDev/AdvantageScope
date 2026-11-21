@@ -141,9 +141,16 @@ see what the auto would really score.
 - **Tune:** how much to change the exit speed to center that shot, and the chance it would have then.
 
 **This random match:** your robot sim is a perfect robot, so its replay looks the same every time. Auto Check also
-plays a **random match**: every shot once, with fresh random errors, like a real match where some shots just miss.
-Misses show on the **3D Field** with a **red trail** and land where they would really go. Press **🎲 New random
-match** to roll another one; each is different, and over many rolls they average out to the "With match error" card.
+plays a **random match**: every shot once, with fresh random errors, like a real match where some shots just miss. The
+**3D Field** then shows that match, not the perfect one:
+
+- a missed shot flies off with a **red trail** and lands where it really would (it does not go in),
+- a **HIVE only tips if its CELL really filled up**, using the same rule as our robot sim (how many POLLEN it needs
+  depends on the NECTAR in it). If misses leave it short, it stays put and the card says so. A ball still in the air
+  can fill it a moment later, and then it tips late.
+- once a HIVE didn't tip, later shots our auto aims at its other CELL can't go in, because that CELL is pointing down.
+
+Press **🎲 New random match** to roll another one.
 
 The gold box above the table sums it up in one sentence. The error settings it uses come from the **Shot Lab** tab.
 

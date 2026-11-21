@@ -45,6 +45,8 @@ export interface AutoShot {
   cell: { alliance: Alliance; hiveCell: HiveCell } | null;
   /** What the robot-code simulation said happened. */
   robotSimResult: "in" | "miss" | "unknown";
+  /** Log time the robot sim scored it (s), when it did. */
+  scoredTime?: number;
 }
 
 export interface AutoCheckOptions {
@@ -363,46 +365,157 @@ export function analyzeAutoShots(
   };
 }
 
-/** One shot of a random match: whether it went in, and (for misses) where the piece flew. */
+/**
+ * POLLEN a CELL needs to tip its HIVE, indexed by the NECTAR in it: the robot sim's table
+ * (BioBuzzField.TIP_POLLEN, from the Event Field Setup Guide section 12 and one measured HIVE).
+ */
+export const TIP_POLLEN = [8, 7, 6, 3, 1, 0];
+
+/** A HIVE tip in the robot-code log: when the bar started to swing and what the up CELL held then. */
+export interface HiveSwing {
+  alliance: Alliance;
+  /** Log time the bar started to swing (s). */
+  start: number;
+  /** The CELL that was up (and full enough) when it started. */
+  upCell: HiveCell;
+  pollen: number;
+  nectar: number;
+}
+
+/** One shot of a random match: whether it went in, and (when it differs from the log) where the piece flew. */
 export interface MatchShot {
   index: number;
   time: number;
   hit: boolean;
-  /** Piece path for a miss, sim frame, times relative to the log (empty for a hit). */
+  /** What the robot-code sim said for this shot, and when it went in there (s). */
+  loggedIn: boolean;
+  loggedInTime: number | null;
+  /** Log time it went in, in this match (s), or null. */
+  inTime: number | null;
+  /** The CELL it was flown at (its alliance's up CELL in this match, which can differ from the log). */
+  cell: { alliance: Alliance; hiveCell: HiveCell } | null;
+  /**
+   * True when the logged ball can't be shown for this shot (a miss, a different result than the log,
+   * or a HIVE that didn't tip): the replay hides it and draws `path` instead.
+   */
+  override: boolean;
+  /** Piece path when `override`, sim frame, times relative to the log (empty otherwise). */
   path: { time: number; position: Vector3 }[];
+}
+
+/** A HIVE that does not tip in this match: misses left its up CELL short when the log tipped it. */
+export interface FrozenHive {
+  alliance: Alliance;
+  /** Log time it would have started to swing (s); from here on it stays put. */
+  from: number;
+  upCell: HiveCell;
+  /** POLLEN it was short. */
+  short: number;
+}
+
+/** A HIVE that tips later than in the log: a ball still in the air filled its CELL. */
+export interface LateHive {
+  alliance: Alliance;
+  /** Log time the logged swing started (s). */
+  from: number;
+  /** How much later it starts here (s). */
+  delay: number;
 }
 
 export interface RandomMatch {
   seed: number;
   shots: MatchShot[];
   inCount: number;
+  frozen: FrozenHive[];
+  late: LateHive[];
 }
 
 /**
  * One random match: every logged shot flown once with one random draw of the Shot Lab error model
  * (plus spin), so some miss the way they would on a real field. Shots fired within `burstGap`
- * seconds of the one before count as rapid fire (flywheel recovery). Misses keep flying, bouncing
- * and rolling until they stop, so they can be drawn on the field. Note: the HIVE frame isn't a
- * collider here, so a miss passes through it.
+ * seconds of the one before count as rapid fire (flywheel recovery). Pieces keep flying, bouncing
+ * (off the HIVE too) and rolling until they stop, so they can be drawn on the field.
+ *
+ * HIVE tips follow the robot sim's rule (TIP_POLLEN): at each logged tip, the up CELL's logged count
+ * is corrected for this match's misses (and extra hits). Short of the table, that HIVE doesn't tip
+ * here and stays put for the rest of the match, and later shots at it are flown at its real up CELL
+ * (the robot code would have reacted differently from then on; this keeps its logged aim).
  */
 export function simulateRandomMatch(
   shots: AutoShot[],
   config: ShotLabConfig,
   options: Partial<AutoCheckOptions> = {},
   seed = Date.now(),
-  burstGap = 0.6
+  burstGap = 0.6,
+  swings: HiveSwing[] = []
 ): RandomMatch {
   const opts = { ...DEFAULT_AUTO_CHECK_OPTIONS, ...options };
   const model = buildErrorModel(config);
   const piece = buildGamePiece(config);
   const rng = new Random(seed);
   const results: MatchShot[] = [];
+  const frozen: Partial<Record<Alliance, FrozenHive>> = {};
+  const late: LateHive[] = [];
+  const lastSwing: Record<Alliance, number> = { red: -Infinity, blue: -Infinity };
+  const pending = [...swings].sort((a, b) => a.start - b.start);
+
+  // Applies the logged tips up to time t, corrected for this match's results so far
+  const settleSwings = (t: number) => {
+    while (pending.length > 0 && pending[0].start <= t) {
+      const swing = pending.shift()!;
+      const a = swing.alliance;
+      if (frozen[a] !== undefined) continue;
+      // Only pieces that were in the CELL when the bar started to swing count (a shot in the air then
+      // lands during the swing)
+      const sameCell = (r: MatchShot) =>
+        r.cell !== null && r.cell.alliance === a && r.cell.hiveCell === swing.upCell && r.time > lastSwing[a];
+      const before = (t: number | null) => t !== null && t <= swing.start + 1e-6;
+      const lost = results.filter((r) => sameCell(r) && before(r.loggedInTime) && !(r.hit && before(r.inTime))).length;
+      const gained = results.filter((r) => sameCell(r) && !before(r.loggedInTime) && r.hit && before(r.inTime)).length;
+      const need = TIP_POLLEN[Math.min(Math.max(0, swing.nectar), TIP_POLLEN.length - 1)];
+      const count = swing.pollen - lost + gained;
+      lastSwing[a] = swing.start;
+      if (count >= need) continue;
+      // Short now: a ball still in the air can fill it a moment later, and the bar swings then
+      const arriving = results
+        .filter((r) => sameCell(r) && r.hit && r.inTime !== null && !before(r.inTime))
+        .map((r) => r.inTime as number)
+        .sort((x, y) => x - y);
+      const missing = need - count;
+      if (arriving.length >= missing) {
+        late.push({ alliance: a, from: swing.start, delay: arriving[missing - 1] - swing.start });
+      } else {
+        frozen[a] = { alliance: a, from: swing.start, upCell: swing.upCell, short: missing - arriving.length };
+      }
+    }
+  };
+
   let burstIndex = 0;
   shots.forEach((shot, index) => {
     burstIndex = index > 0 && shot.time - shots[index - 1].time < burstGap ? burstIndex + 1 : 0;
-    const target = targetFor(config, shot.cell);
+    settleSwings(shot.time);
+    const loggedIn = shot.robotSimResult === "in";
+    const loggedInTime = loggedIn ? shot.scoredTime ?? shot.time + 0.6 : null;
+    const stuck = shot.cell === null ? undefined : frozen[shot.cell.alliance];
+    const cell =
+      shot.cell === null
+        ? null
+        : stuck !== undefined
+        ? { alliance: stuck.alliance, hiveCell: stuck.upCell }
+        : shot.cell;
+    const target = targetFor(config, cell);
     if (target === null) {
-      results.push({ index, time: shot.time, hit: false, path: [] });
+      results.push({
+        index,
+        time: shot.time,
+        hit: false,
+        loggedIn,
+        loggedInTime,
+        inTime: null,
+        cell,
+        override: false,
+        path: []
+      });
       return;
     }
     const exitSpeed = Math.hypot(
@@ -424,18 +537,32 @@ export function simulateRandomMatch(
       crossingHeight: targetPlaneHeight(target)
     });
     const hit = trajectory.target?.hit ?? false;
+    const override = !hit || hit !== loggedIn || stuck !== undefined;
     const t0 = trajectory.samples.length > 0 ? trajectory.samples[0].time : 0;
+    const enteredAt = trajectory.target?.time ?? null;
     results.push({
       index,
       time: shot.time,
       hit,
-      path: hit
-        ? []
-        : trajectory.samples.map((sampleState) => ({
+      loggedIn,
+      loggedInTime,
+      inTime: hit && enteredAt !== null ? shot.time + enteredAt - t0 : null,
+      cell,
+      override,
+      path: override
+        ? trajectory.samples.map((sampleState) => ({
             time: shot.time + sampleState.time - t0,
             position: [...sampleState.position] as Vector3
           }))
+        : []
     });
   });
-  return { seed, shots: results, inCount: results.filter((r) => r.hit).length };
+  settleSwings(Infinity);
+  return {
+    seed,
+    shots: results,
+    inCount: results.filter((r) => r.hit).length,
+    frozen: Object.values(frozen).filter((f): f is FrozenHive => f !== undefined),
+    late
+  };
 }

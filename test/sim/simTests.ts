@@ -11,7 +11,7 @@
  * Each check states what would make it fail; exits non-zero if any check fails.
  */
 
-import { centeringExitSpeed } from "../../src/shared/physics/AutoShotCheck";
+import { AutoShot, centeringExitSpeed, simulateRandomMatch } from "../../src/shared/physics/AutoShotCheck";
 import { computeSolution, fireShot } from "../../src/shared/physics/DriveShooting";
 import { DEFAULT_DRIVETRAIN, advanceDrive, makeDriveState, robotCorners } from "../../src/shared/physics/DriveSim";
 import { BIOBUZZ, cellMouth } from "../../src/shared/physics/GamePresets";
@@ -23,6 +23,7 @@ import {
   makeBallState
 } from "../../src/shared/physics/PhysicsEngine";
 import { fitDragCoefficient, fitRestitution, simulateLandingDistance } from "../../src/shared/physics/ShotCalibration";
+import { TYPICAL_ERROR_MODEL, isolateErrorSources, sampleShot } from "../../src/shared/physics/ShotErrorModel";
 import {
   applyGamePreset,
   buildScenario,
@@ -34,12 +35,6 @@ import {
   simulateNominal,
   solveShot
 } from "../../src/shared/physics/ShotLab";
-import {
-  TYPICAL_ERROR_MODEL,
-  ZERO_ERROR_MODEL,
-  isolateErrorSources,
-  sampleShot
-} from "../../src/shared/physics/ShotErrorModel";
 import { Random } from "../../src/shared/physics/vector";
 
 let failures = 0;
@@ -393,8 +388,10 @@ function check(name: string, ok: boolean, info = "") {
   const slip = draw(["wheelSlip"]);
   check(
     "wheel slip only ever loses speed and spin",
-    slip.every((x) => x.shooter.exitSpeed <= scenario.shooter.exitSpeed + 1e-9 && x.shooter.spinRpm <= scenario.shooter.spinRpm + 1e-9) &&
-      mean(slip.map((x) => x.shooter.exitSpeed)) < scenario.shooter.exitSpeed * 0.995,
+    slip.every(
+      (x) =>
+        x.shooter.exitSpeed <= scenario.shooter.exitSpeed + 1e-9 && x.shooter.spinRpm <= scenario.shooter.spinRpm + 1e-9
+    ) && mean(slip.map((x) => x.shooter.exitSpeed)) < scenario.shooter.exitSpeed * 0.995,
     `mean exit ${mean(slip.map((x) => x.shooter.exitSpeed)).toFixed(3)} vs ${scenario.shooter.exitSpeed.toFixed(3)} m/s`
   );
 
@@ -409,23 +406,56 @@ function check(name: string, ok: boolean, info = "") {
     const m = mean(xs.map((x) => x.shooter.hoodAngleDeg));
     return Math.sqrt(mean(xs.map((x) => (x.shooter.hoodAngleDeg - m) ** 2)));
   };
-  check("launch vibration grows with robot speed", spread(moving) > spread(still) * 2, `${spread(still).toFixed(2)}° standing vs ${spread(moving).toFixed(2)}° at 2 m/s`);
+  check(
+    "launch vibration grows with robot speed",
+    spread(moving) > spread(still) * 2,
+    `${spread(still).toFixed(2)}° standing vs ${spread(moving).toFixed(2)}° at 2 m/s`
+  );
 
   const seat = draw(["seating"]);
-  check("ball seating moves the release point sideways", seat.some((x) => Math.abs(x.shooter.offset[1] - scenario.shooter.offset[1]) > 0.002));
-  check("a perfect robot draws no variation", draw([]).every((x) => x.shooter.exitSpeed === scenario.shooter.exitSpeed && x.shooter.offset[1] === scenario.shooter.offset[1]));
+  check(
+    "ball seating moves the release point sideways",
+    seat.some((x) => Math.abs(x.shooter.offset[1] - scenario.shooter.offset[1]) > 0.002)
+  );
+  check(
+    "a perfect robot draws no variation",
+    draw([]).every(
+      (x) => x.shooter.exitSpeed === scenario.shooter.exitSpeed && x.shooter.offset[1] === scenario.shooter.offset[1]
+    )
+  );
 
   // Per-bounce randomness: identical drops land differently
   const bounceX = (noise: boolean, seed: number) => {
-    const engine = new PhysicsEngine({ ...DEFAULT_GAME_PIECE, dragCoefficient: 0, magnusScale: 0 }, { ...DEFAULT_ENVIRONMENT, airDensity: 0 }, { ...FTC_FIELD, halfX: 50, halfY: 50 });
-    if (noise) engine.contactNoise = { rng: new Random(seed), restitutionStdDev: 0.04, frictionStdDev: 0.08, bounceAngleStdDevDeg: 3 };
-    const r = engine.simulate(makeBallState([0, 0, 0.6], [3, 0, -1], [0, 0, 0]), { duration: 1.5, timeStep: 0.001, stopAfterLanding: false });
+    const engine = new PhysicsEngine(
+      { ...DEFAULT_GAME_PIECE, dragCoefficient: 0, magnusScale: 0 },
+      { ...DEFAULT_ENVIRONMENT, airDensity: 0 },
+      { ...FTC_FIELD, halfX: 50, halfY: 50 }
+    );
+    if (noise)
+      engine.contactNoise = {
+        rng: new Random(seed),
+        restitutionStdDev: 0.04,
+        frictionStdDev: 0.08,
+        bounceAngleStdDevDeg: 3
+      };
+    const r = engine.simulate(makeBallState([0, 0, 0.6], [3, 0, -1], [0, 0, 0]), {
+      duration: 1.5,
+      timeStep: 0.001,
+      stopAfterLanding: false
+    });
     return r.finalState.position;
   };
   const plain = [1, 2, 3].map((i) => bounceX(false, i));
   const noisy = [1, 2, 3, 4, 5, 6].map((i) => bounceX(true, i));
-  check("without noise, identical drops land identically", plain.every((p) => Math.abs(p[0] - plain[0][0]) < 1e-12 && Math.abs(p[1] - plain[0][1]) < 1e-12));
-  check("with noise, identical drops scatter", new Set(noisy.map((p) => p[0].toFixed(3))).size > 3 && noisy.some((p) => Math.abs(p[1]) > 0.005), `x spread ${(Math.max(...noisy.map((p) => p[0])) - Math.min(...noisy.map((p) => p[0]))).toFixed(3)} m`);
+  check(
+    "without noise, identical drops land identically",
+    plain.every((p) => Math.abs(p[0] - plain[0][0]) < 1e-12 && Math.abs(p[1] - plain[0][1]) < 1e-12)
+  );
+  check(
+    "with noise, identical drops scatter",
+    new Set(noisy.map((p) => p[0].toFixed(3))).size > 3 && noisy.some((p) => Math.abs(p[1]) > 0.005),
+    `x spread ${(Math.max(...noisy.map((p) => p[0])) - Math.min(...noisy.map((p) => p[0]))).toFixed(3)} m`
+  );
 }
 
 // ---------------------------------------------------------------- Auto Check tuning
@@ -489,6 +519,51 @@ function check(name: string, ok: boolean, info = "") {
       `${r.target?.hit ? "IN" : "MISS"}, ${hiveHits} HIVE touches before the mouth`
     );
   }
+}
+
+// ---------------------------------------------------------------- Random match follows the tip rule
+{
+  const config = defaultShotLabConfig();
+  // A shot the robot sim scored in the red rear CELL, flown here far too slow: it misses
+  const dud: AutoShot = {
+    time: 0.5,
+    ballId: "1",
+    position: [-0.3, -1.2, 0.35],
+    velocity: [0, 1, 1],
+    robotVelocity: [0, 0],
+    cell: { alliance: "red", hiveCell: "rear" },
+    robotSimResult: "in"
+  };
+  const swing = (pollen: number) => ({
+    alliance: "red" as const,
+    start: 1.5,
+    upCell: "rear" as const,
+    pollen,
+    nectar: 0
+  });
+  const exact = simulateRandomMatch([dud], config, {}, 1, 0.6, [swing(8)]);
+  check(
+    "a miss that leaves the CELL short stops the HIVE tip",
+    !exact.shots[0].hit && exact.shots[0].override && exact.frozen.length === 1 && exact.frozen[0].short === 1,
+    exact.frozen.length > 0 ? `red HIVE stays put, ${exact.frozen[0].short} POLLEN short` : "still tipped"
+  );
+  const spare = simulateRandomMatch([dud], config, {}, 1, 0.6, [swing(9)]);
+  check("with a POLLEN to spare the HIVE still tips", spare.frozen.length === 0, `${spare.frozen.length} stopped`);
+  // A ball still in the air when the bar starts to swing wasn't part of that count
+  const late = simulateRandomMatch([{ ...dud, scoredTime: 1.7 }], config, {}, 1, 0.6, [swing(8)]);
+  check(
+    "a ball landing during the swing doesn't change the tip",
+    late.frozen.length === 0,
+    `${late.frozen.length} stopped`
+  );
+  // After the stop, the next shot at red is flown at the CELL that is really up (rear), not the logged one
+  const later: AutoShot = { ...dud, time: 6, cell: { alliance: "red", hiveCell: "audience" } };
+  const after = simulateRandomMatch([dud, later], config, {}, 1, 0.6, [swing(8)]);
+  check(
+    "shots after a stopped tip aim at the CELL that's really up",
+    after.shots[1].cell?.hiveCell === "rear" && after.shots[1].override,
+    `flown at the ${after.shots[1].cell?.hiveCell} CELL`
+  );
 }
 
 console.log("\n" + passes + " passed, " + failures + " failed");

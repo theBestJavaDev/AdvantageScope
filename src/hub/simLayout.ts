@@ -9,6 +9,7 @@ import { TabsState } from "../shared/HubState";
 import LoggableType from "../shared/log/LoggableType";
 import TabType, { SOLVERS_TAB_TYPES } from "../shared/TabType";
 import { createUUID } from "../shared/util";
+import { MATCH_WORLD_KEYS } from "./matchReplay";
 
 /**
  * Opening a BioBuzz SimLoop log (the robot repo's `simAuto` / sim tests) with no field views set up
@@ -209,6 +210,31 @@ function useTippingField() {
   if (changed) window.tabs.restoreState(state);
 }
 
+/**
+ * Points the sim 3D views at the random match's POLLEN, NECTAR and HIVE tracks (true), or back at the
+ * logged ones (false). Auto Check writes the match tracks, then turns this on; opening a log turns it
+ * off until they exist again.
+ */
+export function useMatchWorld(on: boolean) {
+  const map: Record<string, string> = on
+    ? MATCH_WORLD_KEYS
+    : Object.fromEntries(Object.entries(MATCH_WORLD_KEYS).map(([logged, match]) => [match, logged]));
+  const state = window.tabs.saveState();
+  let changed = false;
+  for (const tab of state.tabs) {
+    if (tab.type !== TabType.Field3d) continue;
+    const controller = tab.controller as { sources?: { logKey: string }[] } | null;
+    if (controller === null || !Array.isArray(controller.sources)) continue;
+    for (const source of controller.sources) {
+      if (source.logKey in map) {
+        source.logKey = map[source.logKey];
+        changed = true;
+      }
+    }
+  }
+  if (changed) window.tabs.restoreState(state);
+}
+
 /** Puts an Auto Check tab next to the sim views (once), so every sim log gets its shots checked. */
 function addAutoCheckTab() {
   const state = window.tabs.saveState();
@@ -247,6 +273,7 @@ export async function maybeApplySimLayout(logName: string): Promise<void> {
   if (logName === lastHandledLog) return;
   if (!window.log.getFieldKeys().includes(SIM_ROBOT_KEY)) return;
   lastHandledLog = logName;
+  useMatchWorld(false); // a saved random match from an earlier log: back to this log's own tracks
 
   const current = window.tabs.saveState();
   const fieldTabs = current.tabs.filter((tab) => tab.type === TabType.Field2d || tab.type === TabType.Field3d);

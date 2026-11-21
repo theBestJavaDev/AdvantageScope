@@ -7,6 +7,7 @@ Welcome to **SolversScope**, custom-developed for **FTC Team 23511 Seattle Solve
 ## 🚀 Common Commands
 
 ### Development
+
 ```bash
 # Ensure Node.js is in PATH (if using NVM on macOS):
 export PATH="/System/Volumes/Data/Users/brandon/.nvm/versions/node/v26.13.1/bin:$PATH"
@@ -22,6 +23,7 @@ npm start
 ```
 
 ### Packaging & Distribution
+
 ```bash
 # Build standalone installers (Mac DMG, Windows EXE, Linux AppImage):
 npx electron-builder build --mac dmg
@@ -54,9 +56,11 @@ npx electron-builder build --win nsis --x64
 ## ⚙️ Key Conventions & Coding Standards
 
 1. **Standalone & Offline Privacy**:
+
    - SolversScope runs in standalone offline mode. Third-party telemetry, GitHub update polling, and external tracking calls are disabled. All robot data (NT4, Phoenix, RLOG, FTC Dashboard) runs locally.
 
 2. **TypeScript & Bundling**:
+
    - Code is written in modern TypeScript (`strict` mode).
    - Bundled using **Rolldown** (`npm run compile`).
 
@@ -76,6 +80,7 @@ The robot repo's SimLoop sim runs the real OpModes on a simulated field and writ
 
 With SolversScope open, the log opens in it automatically (the runner writes `%TEMP%/ascope-log-path.txt`, which
 SolversScope watches). Per-computer setup:
+
 - The team robot model `Robot_BioBuzzCad` (team CAD) is bundled in `bundledAssets/`.
 - The tipping-HIVE field (`Field3d_BioBuzzSim`, `Robot_BioBuzzHiveRed/Blue`) comes from the robot repo's
   `sim/advantagescope/make_field_model.py` and lives only in `%APPDATA%/SolversScope/userAssets` (FIRST CAD: never commit it).
@@ -124,6 +129,12 @@ SolversScope watches). Per-computer setup:
   (`src/main/electron/robotCad.ts`): the chosen .glb is copied into userAssets as a robot. "Don't ask again" is
   saved in the `skipRobotCadPrompt` pref.
 - **Physics checks:** `npm run test:sim` (`test/sim/simTests.ts`). Run it after changing anything in `src/shared/physics/`.
+- **Random match world:** `simulateRandomMatch` applies the robot sim's tip rule (`TIP_POLLEN`, indexed by NECTAR) at
+  each logged tip (`extractHiveSwings`: tip counter + angle), counting only pieces in the CELL when the swing starts.
+  Short -> a ball in flight can tip it late (`late`), else that HIVE stays put (`frozen`) and later shots at it are
+  flown at its real up CELL. `src/hub/matchReplay.ts` writes copies of Pollen/Nectar/HIVE tracks under
+  `/SolversSim/AutoCheck/Match/World` (logged balls of overridden shots followed frame to frame and hidden; pieces in
+  a stopped HIVE held), and `simLayout.useMatchWorld` points the sim 3D view at them (off again when a log opens).
 - **Solid HIVE:** `cellMouth` attaches `colliders` (the tipped bar's trays, open only at the mouths, plus the A-frame legs
   and axle; `hiveColliders` / `frameColliders` in `GamePresets.ts`). `PhysicsEngine.simulate` bounces pieces off the
   target's colliders (contact surface `"hive"`). The aim solvers (`measureMiss`) fly without them on purpose. Only the

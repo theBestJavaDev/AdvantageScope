@@ -6,7 +6,7 @@
 // at the root directory of this project.
 
 import LoggableType from "../shared/log/LoggableType";
-import { AutoShot } from "../shared/physics/AutoShotCheck";
+import { AutoShot, HiveSwing } from "../shared/physics/AutoShotCheck";
 import { Alliance, HiveCell } from "../shared/physics/GamePresets";
 import { Vector3 } from "../shared/physics/vector";
 
@@ -31,6 +31,8 @@ const ROBOT = P + "Field/Robot";
 const TICK = 0.02;
 const FIT_FRAMES = 6;
 const G = 9.80665;
+/** How long a HIVE bar takes to swing over in the robot sim (BioBuzzField.TIP_SWING_SECONDS). */
+const SWING_SECONDS = 4.0;
 
 export function isRobotSimLog(): boolean {
   return window.log.getType(LAUNCH_COUNT) === LoggableType.Number && window.log.getFieldKeys().includes(POLLEN);
@@ -192,7 +194,55 @@ export function extractAutoShots(): AutoShot[] {
       hiveCell: upCellAt(alliance, t)
     };
 
-    shots.push({ time: t, ballId, position, velocity, robotVelocity, cell, robotSimResult });
+    const scoredTime = outcome !== undefined && outcome.to === "SCORED" ? outcome.t : undefined;
+    shots.push({ time: t, ballId, position, velocity, robotVelocity, cell, robotSimResult, scoredTime });
   });
   return shots;
+}
+
+/**
+ * Every HIVE tip in the log: when the bar started to swing, which CELL was up, and what it held
+ * (Sim/Hive/<alliance>AngleRadians, <alliance>UpCell, <alliance>-<far|audience>/pollen|nectar).
+ */
+export function extractHiveSwings(): HiveSwing[] {
+  const swings: HiveSwing[] = [];
+  for (const alliance of ["red", "blue"] as Alliance[]) {
+    const angles = window.log.getNumber(P + "Sim/Hive/" + alliance + "AngleRadians", -Infinity, Infinity);
+    const tips = window.log.getNumber(P + "Sim/Hive/" + alliance + "Tips", -Infinity, Infinity);
+    if (angles === undefined || tips === undefined) continue;
+    // Each finished tip (the counter goes up when the bar lands); the swing began when the angle
+    // first moved clearly within the swing time before that
+    for (let k = 1; k < tips.values.length; k++) {
+      if (tips.values[k] <= tips.values[k - 1]) continue;
+      const end = tips.timestamps[k];
+      const from = end - SWING_SECONDS - 0.5;
+      let settled: number | null = null;
+      let start: number | null = null;
+      let previous = from;
+      for (let i = 0; i < angles.timestamps.length && angles.timestamps[i] <= end; i++) {
+        const t = angles.timestamps[i];
+        if (t < from) {
+          settled = angles.values[i];
+          continue;
+        }
+        if (settled === null) settled = angles.values[i];
+        if (Math.abs(angles.values[i] - settled) > 1e-3) {
+          start = previous;
+          break;
+        }
+        previous = t;
+      }
+      if (start === null) continue;
+      const upCell = upCellAt(alliance, start);
+      const cellKey = P + "Sim/Hive/" + alliance + "-" + (upCell === "rear" ? "far" : "audience");
+      swings.push({
+        alliance,
+        start,
+        upCell,
+        pollen: num(cellKey + "/pollen", start) ?? 0,
+        nectar: num(cellKey + "/nectar", start) ?? 0
+      });
+    }
+  }
+  return swings.sort((a, b) => a.start - b.start);
 }

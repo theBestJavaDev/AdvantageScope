@@ -958,6 +958,33 @@ export default class Log {
     }
   }
 
+  /** SolversScope: writes a Pose3d (translation + quaternion w, x, y, z) with the "Pose3d" structured type. */
+  putPose3d(key: string, timestamp: number, translation: Translation3d, quaternion: [number, number, number, number]) {
+    const translationKey = key + "/translation";
+    const rotationKey = key + "/rotation";
+    const quaternionKey = rotationKey + "/q";
+    this.putNumber(translationKey + "/x", timestamp, translation[0]);
+    this.putNumber(translationKey + "/y", timestamp, translation[1]);
+    this.putNumber(translationKey + "/z", timestamp, translation[2]);
+    this.putNumber(quaternionKey + "/w", timestamp, quaternion[0]);
+    this.putNumber(quaternionKey + "/x", timestamp, quaternion[1]);
+    this.putNumber(quaternionKey + "/y", timestamp, quaternion[2]);
+    this.putNumber(quaternionKey + "/z", timestamp, quaternion[3]);
+    const parents: [string, string][] = [
+      [key, "Pose3d"],
+      [translationKey, "Translation3d"],
+      [rotationKey, "Rotation3d"],
+      [quaternionKey, "Quaternion"]
+    ];
+    parents.forEach(([parent, type], i) => {
+      if (parent in this.fields) return;
+      this.createBlankField(parent, LoggableType.Empty);
+      this.setStructuredType(parent, type);
+      if (i === 0) this.setGeneratedParent(parent);
+      this.processTimestamp(parent, timestamp);
+    });
+  }
+
   /** Writes a translation array with the "Translation2d[]" structured type. */
   putTranslationArray(key: string, timestamp: number, translations: Translation2d[]) {
     if (!(key in this.fields)) {

@@ -14,7 +14,7 @@ export type AutoCheckRendererCommand = {
   errorSources: string[];
   spinLabel: string;
   /** The random match shown on the 3D field (misses as POLLEN with red trails), or null before the first check. */
-  match?: { inCount: number; total: number; missed: number[] } | null;
+  match?: { inCount: number; total: number; missed: number[]; notes?: string[] } | null;
 };
 
 function pct(x: number): string {
@@ -108,9 +108,10 @@ export default class AutoCheckRenderer implements TabRenderer {
       card(
         "This random match",
         m.inCount + " / " + m.total,
-        m.missed.length === 0
+        (m.missed.length === 0
           ? "every shot went in this time · 🎲 to roll another"
-          : "missed #" + m.missed.join(", #") + " · red trails on the 3D field",
+          : "missed #" + m.missed.join(", #") + " · red trails on the 3D field") +
+          (m.notes && m.notes.length > 0 ? " · " + m.notes.join(" · ") : ""),
         m.missed.length === 0 ? "good" : ""
       );
     }

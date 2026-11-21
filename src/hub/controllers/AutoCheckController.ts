@@ -18,7 +18,9 @@ import { SpinMode } from "../../shared/physics/ShotLaunch";
 import { AutoCheckRendererCommand } from "../../shared/renderers/AutoCheckRenderer";
 import { createUUID } from "../../shared/util";
 import { setLatestAutoCheck } from "../autoCheckStore";
-import { extractAutoShots, isRobotSimLog } from "../autoShotExtract";
+import { extractAutoShots, extractHiveSwings, isRobotSimLog } from "../autoShotExtract";
+import { writeMatchWorld } from "../matchReplay";
+import { useMatchWorld } from "../simLayout";
 import WorkerManager from "../WorkerManager";
 import { getSharedShotLabConfig } from "./SimForm";
 import TabController from "./TabController";
@@ -255,14 +257,35 @@ export default class AutoCheckController implements TabController {
    */
   private newRandomMatch() {
     if (this.lastRun === null || !isRobotSimLog()) return;
-    const match = simulateRandomMatch(this.lastRun.shots, getSharedShotLabConfig(), this.lastRun.options);
+    const match = simulateRandomMatch(
+      this.lastRun.shots,
+      getSharedShotLabConfig(),
+      this.lastRun.options,
+      Date.now(),
+      0.6,
+      extractHiveSwings()
+    );
     this.writeMatch(match);
+    writeMatchWorld(match, this.lastRun.shots);
+    useMatchWorld(true);
     this.command = {
       ...this.command,
       match: {
         inCount: match.inCount,
         total: match.shots.length,
-        missed: match.shots.filter((s) => !s.hit).map((s) => s.index + 1)
+        missed: match.shots.filter((s) => !s.hit).map((s) => s.index + 1),
+        notes: [
+          ...match.frozen.map(
+            (f) =>
+              (f.alliance === "red" ? "Red" : "Blue") +
+              " HIVE didn't tip (its CELL was " +
+              f.short +
+              " POLLEN short), so later shots at it can't go in"
+          ),
+          ...match.late.map(
+            (l) => (l.alliance === "red" ? "Red" : "Blue") + " HIVE tipped " + l.delay.toFixed(1) + " s late"
+          )
+        ]
       }
     };
   }
@@ -278,7 +301,7 @@ export default class AutoCheckController implements TabController {
     });
     // Missed pieces over time: in flight, then resting where they stopped. Each also gets a red trail
     // while it flies (until it lands, at most TRAIL_SECONDS), in one of the trail slots.
-    const misses = match.shots.filter((s) => s.path.length > 0);
+    const misses = match.shots.filter((s) => s.override && s.path.length > 0);
     if (misses.length > 0) {
       const end = Math.max(log.getTimestampRange()[1], ...misses.map((s) => s.path[s.path.length - 1].time));
       const trailEnds = misses.map((s) => s.time + Math.min(TRAIL_SECONDS, firstLanding(s.path) - s.time));
@@ -290,7 +313,7 @@ export default class AutoCheckController implements TabController {
           // The newest miss in this slot whose trail is still showing
           let trail: [number, number, number][] = [];
           misses.forEach((s, i) => {
-            if (i % MATCH_TRAIL_KEYS.length !== slot || t < s.time || t > trailEnds[i]) return;
+            if (s.hit || i % MATCH_TRAIL_KEYS.length !== slot || t < s.time || t > trailEnds[i]) return;
             trail = s.path
               .filter((p) => p.time <= t)
               .map((p) => simToLogTranslation([...p.position] as [number, number, number]))
