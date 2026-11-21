@@ -54,6 +54,9 @@ For example `AutoMax.rlog`, `AutoMaxBlue.rlog`, `TwoTipRed.rlog`, `ThreeTipRed.r
 
 **To open one:** File → **Open Log(s)…** (or Ctrl+O), go to that folder, pick a file, click Open.
 
+SolversScope **reopens the last run you had open** every time it starts, so you only do this when you want a different
+run.
+
 When you open one of our sim runs, SolversScope sets everything up by itself: the 3D field, the graphs, and the
 Auto Check tab. It starts playing from the beginning of the auto.
 

@@ -353,6 +353,7 @@ function startHistorical(path: string, clear = true, merge = false) {
   };
 
   rememberRunFolder(path); // SolversScope: the Multi Field run picker starts in this folder
+  if (!merge) window.sendMainMessage("remember-last-run", path); // reopened on the next launch
   let source = new HistoricalDataSource();
   let sourceEntry = { source: source, path: path, progress: 0, progressIncluded: true } as {
     source: HistoricalDataSource;

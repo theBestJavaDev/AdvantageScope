@@ -62,6 +62,7 @@ import {
   DOWNLOAD_SYSTEMCORE_USERNAME,
   HUB_DEFAULT_HEIGHT,
   HUB_DEFAULT_WIDTH,
+  LAST_RUN_FILENAME,
   PREFS_FILENAME,
   RECENT_UNITS_FILENAME,
   RLOG_CONNECT_TIMEOUT_MS,
@@ -1379,6 +1380,14 @@ async function handleHubMessage(window: BrowserWindow, message: NamedMessage) {
 
     case "ask-2d-camera":
       select2DCameraPopup(window, message.data.position, message.data.selectedIndex);
+      break;
+
+    case "remember-last-run":
+      try {
+        fs.writeFileSync(LAST_RUN_FILENAME, String(message.data));
+      } catch {
+        // not important enough to report
+      }
       break;
 
     case "open-guide":
@@ -4133,6 +4142,17 @@ app.whenReady().then(async () => {
   );
   if (fileArgs.length > 0) {
     firstOpenPath = fileArgs[0];
+  }
+
+  // SolversScope: nothing to open? Reopen the last run (not in Plain AdvantageScope Mode)
+  if (firstOpenPath === null) {
+    try {
+      const prefs: Preferences = jsonfile.readFileSync(PREFS_FILENAME);
+      const lastRun = fs.existsSync(LAST_RUN_FILENAME) ? fs.readFileSync(LAST_RUN_FILENAME, "utf-8").trim() : "";
+      if (!prefs.plainMode && lastRun !== "" && fs.existsSync(lastRun)) firstOpenPath = lastRun;
+    } catch {
+      // no prefs or last run yet
+    }
   }
 
   // Open file if exists

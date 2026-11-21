@@ -130,4 +130,5 @@ SolversScope watches). Per-computer setup:
   targeted HIVE's trays are solid; the frame tube sizes are estimates.
 - **Cinematic 3D:** Brandon's tuning in the `Field3dRendererImpl` constructor (ACES at exposure 0.65, environment
   0.25, FTC spot lights 20). Check it on Windows too: brighter ACES settings washed the floor white there.
-- **Startup:** only the main window opens. Dev tools only with `SOLVERS_DEVTOOLS=1`; satellites aren't restored.
+- **Startup:** reopens the last log (hub sends `remember-last-run` from `startHistorical`, saved in `last-run.txt`
+  in userData; skipped in Plain mode or when a file was passed). Only the main window opens. Dev tools only with `SOLVERS_DEVTOOLS=1`; satellites aren't restored.

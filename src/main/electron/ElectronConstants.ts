@@ -11,6 +11,8 @@ import path from "path";
 // General
 export const APP_VERSION = app.isPackaged ? app.getVersion() : "dev";
 export const PREFS_FILENAME = path.join(app.getPath("userData"), "prefs.json");
+/** SolversScope: the last log opened, reopened on the next launch so the field is never empty. */
+export const LAST_RUN_FILENAME = path.join(app.getPath("userData"), "last-run.txt");
 export const STATE_FILENAME = path.join(
   app.getPath("userData"),
   "state-" + (app.isPackaged ? app.getVersion().replaceAll(".", "_") : "dev") + ".json"
