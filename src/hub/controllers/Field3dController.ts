@@ -480,7 +480,8 @@ export default class Field3dController implements TabController {
           objects.push({
             type: "gamePiece",
             variant: source.options.variant,
-            poses: poses
+            poses: poses,
+            time: time
           });
           break;
         case "trajectory":

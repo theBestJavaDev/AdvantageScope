@@ -63,6 +63,16 @@ export interface ShotErrorModel {
   air: { gustStdDev: number };
   /** Contact from defenders while shooting. */
   defense: { bumpProbability: number; bumpSpeedStdDev: number; bumpYawStdDevDeg: number };
+  /** Ball slips on the wheels / hood at launch: always loses some speed and spin, by a varying amount. */
+  wheelSlip: { speedLossMeanPct: number; speedLossStdDevPct: number; spinLossMeanPct: number; spinLossStdDevPct: number };
+  /** Frame flex and vibration while the robot drives: extra aim jitter that grows with robot speed. */
+  launchVibration: { baseStdDevDeg: number; extraDegPerMps: number };
+  /** Ball seats off-center in the shooter (sideways offset at release). */
+  seating: { lateralStdDev: number };
+  /** Venue air density (temperature, humidity, altitude drift between matches). */
+  airDensity: { stdDevPct: number };
+  /** Floor and wall randomness per bounce: tile seams, dust, scuffs, ball seam orientation. */
+  surface: { restitutionStdDev: number; frictionStdDev: number; bounceAngleStdDevDeg: number };
 }
 
 export type ErrorSourceKey = keyof ShotErrorModel;
@@ -80,7 +90,12 @@ export const ERROR_SOURCES: { key: ErrorSourceKey; label: string; description: s
   { key: "launchHeight", label: "Launch height", description: "Exit point height variation" },
   { key: "gamePiece", label: "Game piece", description: "Mass, size, drag, grip and bounce variation" },
   { key: "air", label: "Air", description: "Drafts and turbulence in the venue" },
-  { key: "defense", label: "Defense", description: "Getting bumped while shooting" }
+  { key: "defense", label: "Defense", description: "Getting bumped while shooting" },
+  { key: "wheelSlip", label: "Wheel slip", description: "Ball slips on the wheels: lost speed and spin" },
+  { key: "launchVibration", label: "Launch vibration", description: "Frame flex and shake while driving" },
+  { key: "seating", label: "Ball seating", description: "Ball sits off-center in the shooter" },
+  { key: "airDensity", label: "Air density", description: "Temperature, humidity and altitude changing drag and lift" },
+  { key: "surface", label: "Floor & walls", description: "Bounce randomness from seams, dust and scuffs" }
 ];
 
 /** Everything off: a perfect robot. */
@@ -97,7 +112,12 @@ export const ZERO_ERROR_MODEL: ShotErrorModel = {
   launchHeight: { stdDev: 0 },
   gamePiece: { massStdDevPct: 0, radiusStdDev: 0, dragStdDevPct: 0, magnusStdDevPct: 0, restitutionStdDev: 0 },
   air: { gustStdDev: 0 },
-  defense: { bumpProbability: 0, bumpSpeedStdDev: 0, bumpYawStdDevDeg: 0 }
+  defense: { bumpProbability: 0, bumpSpeedStdDev: 0, bumpYawStdDevDeg: 0 },
+  wheelSlip: { speedLossMeanPct: 0, speedLossStdDevPct: 0, spinLossMeanPct: 0, spinLossStdDevPct: 0 },
+  launchVibration: { baseStdDevDeg: 0, extraDegPerMps: 0 },
+  seating: { lateralStdDev: 0 },
+  airDensity: { stdDevPct: 0 },
+  surface: { restitutionStdDev: 0, frictionStdDev: 0, bounceAngleStdDevDeg: 0 }
 };
 
 /**
@@ -117,7 +137,12 @@ export const TYPICAL_ERROR_MODEL: ShotErrorModel = {
   launchHeight: { stdDev: 0.005 },
   gamePiece: { massStdDevPct: 3, radiusStdDev: 0.001, dragStdDevPct: 5, magnusStdDevPct: 10, restitutionStdDev: 0.05 },
   air: { gustStdDev: 0.15 },
-  defense: { bumpProbability: 0.05, bumpSpeedStdDev: 0.4, bumpYawStdDevDeg: 5 }
+  defense: { bumpProbability: 0.05, bumpSpeedStdDev: 0.4, bumpYawStdDevDeg: 5 },
+  wheelSlip: { speedLossMeanPct: 1.5, speedLossStdDevPct: 1.5, spinLossMeanPct: 6, spinLossStdDevPct: 6 },
+  launchVibration: { baseStdDevDeg: 0.15, extraDegPerMps: 0.6 },
+  seating: { lateralStdDev: 0.004 },
+  airDensity: { stdDevPct: 3 },
+  surface: { restitutionStdDev: 0.04, frictionStdDev: 0.08, bounceAngleStdDevDeg: 3 }
 };
 
 /** Copy of the model with only the given sources enabled. */
@@ -193,6 +218,20 @@ export function sampleShot(scenario: ShotScenario, model: ShotErrorModel, rng: R
   // --- Spin rate ---
   shooter.spinRpm *= Math.max(0, 1 + rng.gaussian(0, model.spin.rpmStdDevPct / 100));
 
+  // --- Wheel slip: the ball never quite picks up the wheel's full speed / spin ---
+  const ws = model.wheelSlip;
+  if (ws.speedLossMeanPct > 0 || ws.speedLossStdDevPct > 0) {
+    const loss = Math.min(0.6, Math.max(0, rng.gaussian(ws.speedLossMeanPct, ws.speedLossStdDevPct) / 100));
+    shooter.exitSpeed *= 1 - loss;
+  }
+  if (ws.spinLossMeanPct > 0 || ws.spinLossStdDevPct > 0) {
+    const loss = Math.min(1, Math.max(0, rng.gaussian(ws.spinLossMeanPct, ws.spinLossStdDevPct) / 100));
+    shooter.spinRpm *= 1 - loss;
+  }
+
+  // --- Ball seated off-center ---
+  shooter.offset[1] += rng.gaussian(0, model.seating.lateralStdDev);
+
   // --- Where the robot really is vs. where it thinks it is ---
   robot.x += rng.gaussian(0, model.localization.xyStdDev);
   robot.y += rng.gaussian(0, model.localization.xyStdDev);
@@ -202,6 +241,17 @@ export function sampleShot(scenario: ShotScenario, model: ShotErrorModel, rng: R
   if (moving) {
     robot.vx += rng.gaussian(0, model.velocityEstimate.stdDev);
     robot.vy += rng.gaussian(0, model.velocityEstimate.stdDev);
+  }
+
+  // --- Launch vibration: shake grows with how fast the robot is driving / turning ---
+  {
+    const lv = model.launchVibration;
+    const speed = Math.hypot(robot.vx, robot.vy) + Math.abs(robot.omega) * 0.2;
+    const jitterDeg = lv.baseStdDevDeg + lv.extraDegPerMps * speed;
+    if (jitterDeg > 0) {
+      shooter.hoodAngleDeg += rng.gaussian(0, jitterDeg);
+      shooter.turretYawDeg += rng.gaussian(0, jitterDeg);
+    }
   }
 
   // --- Defense bump ---
@@ -247,7 +297,26 @@ export function simulateSampledShot(
   rng: Random,
   options: Partial<SimulationOptions>
 ): TrajectoryResult {
-  const engine = new PhysicsEngine(sample.piece, scenario.environment, scenario.field);
+  const environment =
+    model.airDensity.stdDevPct > 0
+      ? {
+          ...scenario.environment,
+          airDensity: Math.max(
+            0.3,
+            scenario.environment.airDensity * (1 + rng.gaussian(0, model.airDensity.stdDevPct / 100))
+          )
+        }
+      : scenario.environment;
+  const engine = new PhysicsEngine(sample.piece, environment, scenario.field);
+  const sf = model.surface;
+  if (sf.restitutionStdDev > 0 || sf.frictionStdDev > 0 || sf.bounceAngleStdDevDeg > 0) {
+    engine.contactNoise = {
+      rng: rng,
+      restitutionStdDev: sf.restitutionStdDev,
+      frictionStdDev: sf.frictionStdDev,
+      bounceAngleStdDevDeg: sf.bounceAngleStdDevDeg
+    };
+  }
   const initial = computeLaunchState(sample.robot, sample.shooter);
   if (model.spin.axisTiltStdDevDeg > 0 && length(initial.angularVelocity) > 0) {
     const axis = launchDirection(sample.robot, sample.shooter);

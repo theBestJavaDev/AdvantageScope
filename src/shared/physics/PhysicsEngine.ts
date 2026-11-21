@@ -20,7 +20,7 @@
  */
 
 import { Rotation3d } from "../geometry";
-import { Vector3, add, addScaled, cross, distanceToBox, dot, length, normalize, scale, sub } from "./vector";
+import { Random, Vector3, add, addScaled, cross, distanceToBox, dot, length, normalize, scale, sub } from "./vector";
 
 export type { Vector3 } from "./vector";
 
@@ -339,7 +339,18 @@ export function liftCoefficient(spinParameter: number, magnusScale: number, maxC
   return Math.min(maxCl, magnusScale * cl);
 }
 
+/** Per-bounce randomness (tile seams, dust, scuffs, seam orientation). Off unless set. */
+export interface ContactNoise {
+  rng: Random;
+  restitutionStdDev: number;
+  frictionStdDev: number;
+  bounceAngleStdDevDeg: number;
+}
+
 export class PhysicsEngine {
+  /** When set, every real impact draws its own restitution, friction and sideways deflection. */
+  public contactNoise: ContactNoise | null = null;
+
   constructor(
     public piece: GamePieceProperties = DEFAULT_GAME_PIECE,
     public environment: EnvironmentProperties = DEFAULT_ENVIRONMENT,
@@ -489,7 +500,11 @@ export class PhysicsEngine {
       const impactSpeed = -vn;
       const isImpact = impactSpeed > restThreshold;
       const speedFactor = Math.min(1.15, Math.max(0.5, 1 - softening * (impactSpeed - DROP_TEST_SPEED)));
-      const e = isImpact ? Math.min(0.98, plane.restitution * speedFactor) : 0;
+      // Each impact is a little different (where on the ball and tile it lands)
+      const noise = isImpact ? this.contactNoise : null;
+      const eNoise = noise === null ? 0 : noise.rng.gaussian(0, noise.restitutionStdDev);
+      const muHit = noise === null ? mu : Math.max(0.02, mu * (1 + noise.rng.gaussian(0, noise.frictionStdDev)));
+      const e = isImpact ? Math.min(0.98, Math.max(0, plane.restitution * speedFactor + eNoise)) : 0;
       let normalImpulse = vn < 0 ? -(1 + e) * m * vn : 0;
       // Resting on the floor: gravity's support impulse still provides friction
       if (plane.surface === "floor") normalImpulse = Math.max(normalImpulse, m * g * dt);
@@ -504,16 +519,24 @@ export class PhysicsEngine {
       // returns a share of the tangential velocity (spin rebound); at rest it must not, or it jitters.
       const stickGain = isImpact ? 1 + betaT : 1;
       let tangentImpulse = scale(vSlip, (-stickGain * m) / (1 + 1 / k));
-      const stickLimit = mu * staticRatio * normalImpulse;
+      const stickLimit = muHit * staticRatio * normalImpulse;
       const slipping = length(tangentImpulse) > stickLimit;
       if (slipping && slipSpeed > 1e-9) {
         // Skidding: kinetic friction (a little below the static limit)
-        tangentImpulse = scale(vSlip, (-mu * normalImpulse) / slipSpeed);
+        tangentImpulse = scale(vSlip, (-muHit * normalImpulse) / slipSpeed);
       }
 
       state.velocity = add(state.velocity, scale(n, vn < 0 ? -(1 + e) * vn : 0));
       state.velocity = addScaled(state.velocity, tangentImpulse, 1 / m);
       state.angularVelocity = addScaled(state.angularVelocity, cross(rc, tangentImpulse), 1 / I);
+
+      // Sideways kick: a seam or scuff turns the ball a few degrees off its path
+      if (noise !== null && noise.bounceAngleStdDevDeg > 0) {
+        const angle = noise.rng.gaussian(0, noise.bounceAngleStdDevDeg) * (Math.PI / 180);
+        const vt = addScaled(state.velocity, n, -dot(state.velocity, n));
+        const turned = add(scale(vt, Math.cos(angle) - 1), scale(cross(n, vt), Math.sin(angle)));
+        state.velocity = add(state.velocity, turned);
+      }
 
       // Pivot (spin-about-the-normal) friction: a ball spinning flat on the floor / against a wall slows.
       const spinAlongNormal = dot(state.angularVelocity, n);

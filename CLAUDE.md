@@ -128,6 +128,6 @@ SolversScope watches). Per-computer setup:
   and axle; `hiveColliders` / `frameColliders` in `GamePresets.ts`). `PhysicsEngine.simulate` bounces pieces off the
   target's colliders (contact surface `"hive"`). The aim solvers (`measureMiss`) fly without them on purpose. Only the
   targeted HIVE's trays are solid; the frame tube sizes are estimates.
-- **Cinematic 3D:** macOS keeps Brandon's tuning (ACES, FTC spot lights 60, environment 0.55); Windows/other get no tone
-  mapping, 35 and 0.35 (ACES washed the floor white and shifted red/blue there). `Field3dRendererImpl` constructor.
+- **Cinematic 3D:** Brandon's tuning in the `Field3dRendererImpl` constructor (ACES at exposure 0.65, environment
+  0.25, FTC spot lights 20). Check it on Windows too: brighter ACES settings washed the floor white there.
 - **Startup:** only the main window opens. Dev tools only with `SOLVERS_DEVTOOLS=1`; satellites aren't restored.

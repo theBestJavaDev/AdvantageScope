@@ -34,6 +34,12 @@ import {
   simulateNominal,
   solveShot
 } from "../../src/shared/physics/ShotLab";
+import {
+  TYPICAL_ERROR_MODEL,
+  ZERO_ERROR_MODEL,
+  isolateErrorSources,
+  sampleShot
+} from "../../src/shared/physics/ShotErrorModel";
 import { Random } from "../../src/shared/physics/vector";
 
 let failures = 0;
@@ -372,6 +378,54 @@ function check(name: string, ok: boolean, info = "") {
     }
     check("bounces never create energy", worst < 0.02, `worst change ${(worst * 100).toFixed(2)} %`);
   }
+}
+
+// ---------------------------------------------------------------- Natural-looking error sources
+{
+  const scenario = buildScenario(defaultShotLabConfig());
+  const draw = (keys: Parameters<typeof isolateErrorSources>[1], n = 400) => {
+    const model = isolateErrorSources(TYPICAL_ERROR_MODEL, keys);
+    const rng = new Random(7);
+    return Array.from({ length: n }, () => sampleShot(scenario, model, rng));
+  };
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+  const slip = draw(["wheelSlip"]);
+  check(
+    "wheel slip only ever loses speed and spin",
+    slip.every((x) => x.shooter.exitSpeed <= scenario.shooter.exitSpeed + 1e-9 && x.shooter.spinRpm <= scenario.shooter.spinRpm + 1e-9) &&
+      mean(slip.map((x) => x.shooter.exitSpeed)) < scenario.shooter.exitSpeed * 0.995,
+    `mean exit ${mean(slip.map((x) => x.shooter.exitSpeed)).toFixed(3)} vs ${scenario.shooter.exitSpeed.toFixed(3)} m/s`
+  );
+
+  const still = draw(["launchVibration"]);
+  const moving = (() => {
+    const model = isolateErrorSources(TYPICAL_ERROR_MODEL, ["launchVibration"]);
+    const rng = new Random(7);
+    const fast = { ...scenario, robot: { ...scenario.robot, vx: 2, vy: 0 } };
+    return Array.from({ length: 400 }, () => sampleShot(fast, model, rng));
+  })();
+  const spread = (xs: { shooter: { hoodAngleDeg: number } }[]) => {
+    const m = mean(xs.map((x) => x.shooter.hoodAngleDeg));
+    return Math.sqrt(mean(xs.map((x) => (x.shooter.hoodAngleDeg - m) ** 2)));
+  };
+  check("launch vibration grows with robot speed", spread(moving) > spread(still) * 2, `${spread(still).toFixed(2)}° standing vs ${spread(moving).toFixed(2)}° at 2 m/s`);
+
+  const seat = draw(["seating"]);
+  check("ball seating moves the release point sideways", seat.some((x) => Math.abs(x.shooter.offset[1] - scenario.shooter.offset[1]) > 0.002));
+  check("a perfect robot draws no variation", draw([]).every((x) => x.shooter.exitSpeed === scenario.shooter.exitSpeed && x.shooter.offset[1] === scenario.shooter.offset[1]));
+
+  // Per-bounce randomness: identical drops land differently
+  const bounceX = (noise: boolean, seed: number) => {
+    const engine = new PhysicsEngine({ ...DEFAULT_GAME_PIECE, dragCoefficient: 0, magnusScale: 0 }, { ...DEFAULT_ENVIRONMENT, airDensity: 0 }, { ...FTC_FIELD, halfX: 50, halfY: 50 });
+    if (noise) engine.contactNoise = { rng: new Random(seed), restitutionStdDev: 0.04, frictionStdDev: 0.08, bounceAngleStdDevDeg: 3 };
+    const r = engine.simulate(makeBallState([0, 0, 0.6], [3, 0, -1], [0, 0, 0]), { duration: 1.5, timeStep: 0.001, stopAfterLanding: false });
+    return r.finalState.position;
+  };
+  const plain = [1, 2, 3].map((i) => bounceX(false, i));
+  const noisy = [1, 2, 3, 4, 5, 6].map((i) => bounceX(true, i));
+  check("without noise, identical drops land identically", plain.every((p) => Math.abs(p[0] - plain[0][0]) < 1e-12 && Math.abs(p[1] - plain[0][1]) < 1e-12));
+  check("with noise, identical drops scatter", new Set(noisy.map((p) => p[0].toFixed(3))).size > 3 && noisy.some((p) => Math.abs(p[1]) > 0.005), `x spread ${(Math.max(...noisy.map((p) => p[0])) - Math.min(...noisy.map((p) => p[0]))).toFixed(3)} m`);
 }
 
 // ---------------------------------------------------------------- Auto Check tuning
