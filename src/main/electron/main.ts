@@ -85,7 +85,6 @@ import {
   isAlpha,
   isBeta,
   isBetaExpired,
-  isBetaWelcomeComplete,
   openBetaSurvey,
   saveBetaWelcomeComplete,
   shouldPromptBetaSurvey
@@ -3151,7 +3150,8 @@ function createHubWindow(state?: WindowState, layoutOverride?: any) {
     }
 
     // Launch dev tools
-    if (firstLoad && !app.isPackaged) {
+    // Only with SOLVERS_DEVTOOLS=1: the dev tools window used to pop up on every `npm start`
+    if (firstLoad && !app.isPackaged && process.env.SOLVERS_DEVTOOLS === "1") {
       window.webContents.openDevTools();
     }
 
@@ -3206,8 +3206,6 @@ function createHubWindow(state?: WindowState, layoutOverride?: any) {
           .then((result) => {
             if (result.response === 0) app.quit();
           });
-      } else if (!isBetaWelcomeComplete()) {
-        openBetaWelcome(window);
       } else if (shouldPromptBetaSurvey()) {
         dialog
           .showMessageBox(window, {
@@ -4117,9 +4115,7 @@ app.whenReady().then(async () => {
       let hubWindow = createHubWindow(hubState);
       if (index === 0) targetWindow = hubWindow;
     });
-    applicationState.satellites.forEach((satelliteState) => {
-      createSatellite({ state: satelliteState });
-    });
+    // Pop-out windows (e.g. Drive Sim's Live 3D view) are not reopened on launch: only the main window opens.
   }
 
   // Check for file path given as argument
