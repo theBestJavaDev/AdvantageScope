@@ -49,7 +49,7 @@ export const DEFAULT_PREFS: Preferences = {
   publishFilter: "",
   rlogPort: 5800,
   coordinateSystem: "automatic",
-  field3dModeAc: "cinematic",
+  field3dModeAc: "standard",
   field3dModeBattery: "",
   field3dAntialiasing: true,
   tbaApiKey: "",
