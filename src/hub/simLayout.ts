@@ -251,6 +251,12 @@ function addAutoCheckTab() {
 }
 
 /** When the run starts: the auto's START (after INIT), else the start of the log. */
+/** Plays the open sim log again from its auto's START (after the random match world is written). */
+export function replayFromStart() {
+  window.selection.setSelectedTime(startTime());
+  window.selection.play();
+}
+
 function startTime(): number {
   const range = window.log.getTimestampRange();
   if (window.log.getType(LEG_KEY) === LoggableType.String) {

@@ -20,7 +20,7 @@ import { createUUID } from "../../shared/util";
 import { setLatestAutoCheck } from "../autoCheckStore";
 import { extractAutoShots, extractHiveSwings, isRobotSimLog } from "../autoShotExtract";
 import { writeMatchWorld } from "../matchReplay";
-import { useMatchWorld } from "../simLayout";
+import { replayFromStart, useMatchWorld } from "../simLayout";
 import WorkerManager from "../WorkerManager";
 import { getSharedShotLabConfig } from "./SimForm";
 import TabController from "./TabController";
@@ -74,6 +74,8 @@ export default class AutoCheckController implements TabController {
     spinLabel: ""
   };
   private checkedKey: string | null = null;
+  /** The log the current random match belongs to (a new log restarts the replay with its match). */
+  private lastMatchKey: string | null = null;
   private running = false;
   private pending: number | null = null;
   /** Retries while the log is still decoding (fields load on demand, after the tab asks). */
@@ -178,6 +180,15 @@ export default class AutoCheckController implements TabController {
       spinRpm: "rolling"
     };
     const spinLabel = this.state.spin === "none" ? "no spin" : this.state.spin + " from the hood (rolling)";
+    // The random match first (fast): the 3D replay shows it, so it must be ready before the first tip.
+    // A new log restarts the replay from START with it.
+    const firstForLog = this.lastMatchKey !== key;
+    this.lastRun = { shots, options };
+    this.newRandomMatch();
+    if (firstForLog) {
+      this.lastMatchKey = key;
+      replayFromStart();
+    }
     this.running = true;
     this.RERUN.disabled = true;
     this.setStatus(
@@ -207,12 +218,11 @@ export default class AutoCheckController implements TabController {
           },
           result,
           errorSources,
-          spinLabel
+          spinLabel,
+          match: this.command.match
         };
         setLatestAutoCheck({ logKey: key, result, errorSources, spinLabel, samples: this.state.samples });
         this.writeToLog(result);
-        this.lastRun = { shots, options };
-        this.newRandomMatch();
       })
       .catch(() => this.setStatus("The check failed. Try Re-run.", "warn"))
       .finally(() => {
