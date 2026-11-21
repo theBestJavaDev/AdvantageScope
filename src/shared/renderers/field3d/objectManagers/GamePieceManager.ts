@@ -20,6 +20,9 @@ interface BallMotion {
   /** Radians turned per meter travelled; sign flips for backspin. */
   rate: number;
   hasRolled: boolean;
+  lastTime: number | null;
+  /** Velocity (m/s) over the previous frame pair, to tell free flight from rolling. */
+  velocity: THREE.Vector3 | null;
 }
 
 /** Jumps larger than this (m) between frames are scrubs/teleports, not motion. */
@@ -27,6 +30,11 @@ const MAX_FRAME_STEP = 1.5;
 /** Spin per meter of a ball in flight that has never touched the floor, as a fraction of rolling (backspin). */
 const LAUNCH_SPIN_FRACTION = -1.2;
 const UP = new THREE.Vector3(0, 0, 1);
+const GRAVITY = new THREE.Vector3(0, 0, -9.81);
+/** Moving faster than this with no history is assumed to be a shot, not a ball rolling out of a cell (m/s). */
+const LAUNCH_SPEED = 3;
+/** Acceleration this close to gravity alone means free flight (m/s^2). */
+const FREE_FLIGHT_TOLERANCE = 4;
 
 /** Deterministic pseudo-random orientation so balls don't all sit with the same logo/seam facing. */
 function seededOrientation(index: number): THREE.Quaternion {
@@ -84,7 +92,7 @@ export default class GamePieceManager extends ObjectManager<Field3dRendererComma
 
     // Update poses (balls get a rolling / spinning orientation derived from their motion)
     const radius = this.ballRadius(object.variant);
-    this.instances?.setPoses(object.poses.map((x, index) => this.animate(x.pose, index, radius)));
+    this.instances?.setPoses(object.poses.map((x, index) => this.animate(x.pose, index, radius, object.time ?? null)));
   }
 
   /** Radius of a (roughly) spherical piece, or null for pieces that shouldn't be rolled. */
@@ -108,7 +116,7 @@ export default class GamePieceManager extends ObjectManager<Field3dRendererComma
    * launched, or the roll it had when it left the floor). Pure function of displacement, so
    * scrubbing backwards un-rolls the ball. Poses that already carry a rotation are left alone.
    */
-  private animate(pose: Pose3d, index: number, radius: number | null): Pose3d {
+  private animate(pose: Pose3d, index: number, radius: number | null, time: number | null): Pose3d {
     const hasRotation = Math.abs(pose.rotation[0]) < 0.9999;
     if (radius === null || hasRotation) return pose;
 
@@ -120,36 +128,57 @@ export default class GamePieceManager extends ObjectManager<Field3dRendererComma
         orientation: seededOrientation(index),
         axis: new THREE.Vector3(0, 1, 0),
         rate: 0,
-        hasRolled: false
+        hasRolled: false,
+        lastTime: time,
+        velocity: null
       };
       this.motion[index] = state;
     }
 
     const step = position.clone().sub(state.position);
     const distance = step.length();
-    if (distance > MAX_FRAME_STEP) {
+    const dt = time !== null && state.lastTime !== null ? time - state.lastTime : null;
+    if (distance > MAX_FRAME_STEP || (dt !== null && Math.abs(dt) > 0.5)) {
       // Timeline jump or a piece reappearing elsewhere: restart from a fresh orientation
       state.orientation = seededOrientation(index);
       state.hasRolled = false;
       state.rate = 0;
+      state.velocity = null;
     } else if (distance > 1e-6) {
       const horizontal = new THREE.Vector3(step.x, step.y, 0);
-      const onFloor = position.z <= radius * 1.2 + 0.01;
       const rolling = 1 / radius;
       if (horizontal.lengthSq() > 1e-12) {
         // Axis perpendicular to the direction of travel: up x direction (right-hand rule rolls it forward)
         state.axis.copy(UP).cross(horizontal).normalize();
       }
-      if (onFloor) {
+
+      // Free flight (a shot or a fall) vs. rolling on something (floor, or the tipping CELL's bar).
+      // Free flight accelerates at gravity alone; anything else that is moving is being carried.
+      let velocity: THREE.Vector3 | null = null;
+      if (dt !== null && Math.abs(dt) > 1e-4) velocity = step.clone().divideScalar(dt);
+      let freeFlight: boolean;
+      if (velocity === null) {
+        freeFlight = false;
+      } else if (state.velocity === null) {
+        freeFlight = velocity.length() > LAUNCH_SPEED; // no history yet: fast = just launched
+      } else {
+        const acceleration = velocity.clone().sub(state.velocity).divideScalar(dt!);
+        freeFlight = acceleration.distanceTo(GRAVITY) < FREE_FLIGHT_TOLERANCE && velocity.length() > 0.5;
+      }
+      state.velocity = velocity;
+
+      if (!freeFlight) {
+        // Rolling forward along its path, whichever way that points (down a tipped bar, out of the CELL...)
         state.rate = rolling;
         state.hasRolled = true;
       } else if (!state.hasRolled) {
-        state.rate = rolling * LAUNCH_SPIN_FRACTION;
+        state.rate = rolling * LAUNCH_SPIN_FRACTION; // launched: backspin
       }
       const angle = distance * state.rate;
       const turn = new THREE.Quaternion().setFromAxisAngle(state.axis, angle);
       state.orientation.premultiply(turn).normalize();
     }
+    state.lastTime = time;
     state.position.copy(position);
 
     const q = state.orientation;

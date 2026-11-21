@@ -51,7 +51,7 @@ export default class Field3dRendererImpl implements TabRenderer {
   private DS_CAMERA_TARGET_FTC = new THREE.Vector3(0, -0.2, 0);
   private CONTROLS_MIN_DISTANCE_FRC = 1;
   private CONTROLS_MIN_DISTANCE_FTC = 0.5;
-  private MATERIAL_SPECULAR: THREE.Color = new THREE.Color(0xaaaaaa); // Overridden if not cinematic
+  private MATERIAL_SPECULAR: THREE.Color = new THREE.Color(0x888888); // Overridden if not cinematic
   private MATERIAL_SHININESS: number = 120; // Overridden if not cinematic
   private SPOT_LIGHT_POSITIONS_FRC = [
     [0, 1, 8, 0, -2, 0],
@@ -63,8 +63,8 @@ export default class Field3dRendererImpl implements TabRenderer {
     [2, -1.5, 4, 0, 1, 0],
     [-2, 1.5, 4, 0, -1, 0]
   ] as const;
-  private SPOT_LIGHT_INTENSITY_FRC = 250;
-  private SPOT_LIGHT_INTENSITY_FTC = 60;
+  private SPOT_LIGHT_INTENSITY_FRC = 100;
+  private SPOT_LIGHT_INTENSITY_FTC = 20;
   private WPILIB_ROTATION = rotationSequenceToQuaternion([
     {
       axis: "x",
@@ -171,7 +171,7 @@ export default class Field3dRendererImpl implements TabRenderer {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     if (mode === "cinematic") {
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.15;
+      this.renderer.toneMappingExposure = 0.65;
     }
     this.scene = new THREE.Scene();
     if (mode === "cinematic") {
@@ -182,7 +182,7 @@ export default class Field3dRendererImpl implements TabRenderer {
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         const room = new RoomEnvironment();
         this.scene.environment = pmrem.fromScene(room, 0.03).texture;
-        this.scene.environmentIntensity = 0.55;
+        this.scene.environmentIntensity = 0.25;
         room.dispose();
         pmrem.dispose();
       } catch (error) {
@@ -271,12 +271,12 @@ export default class Field3dRendererImpl implements TabRenderer {
         this.spotLights.push(light);
       });
       {
-        const light = new THREE.PointLight(0xff0000, 60);
+        const light = new THREE.PointLight(0xff0000, 35);
         light.position.set(-4.5, 0, 5);
         this.wpilibCoordinateGroup.add(light);
       }
       {
-        const light = new THREE.PointLight(0x0000ff, 60);
+        const light = new THREE.PointLight(0x0000ff, 35);
         light.position.set(4.5, 0, 5);
         this.wpilibCoordinateGroup.add(light);
       }

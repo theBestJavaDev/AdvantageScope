@@ -166,6 +166,8 @@ export type Field3dRendererCommand_GamePieceObj = {
   type: "gamePiece";
   variant: string;
   poses: AnnotatedPose3d[];
+  /** Log time (s) these poses are from; lets balls tell free flight from rolling. */
+  time?: number | null;
 };
 
 export type Field3dRendererCommand_TrajectoryObj = {

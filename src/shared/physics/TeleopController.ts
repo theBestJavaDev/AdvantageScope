@@ -10,6 +10,7 @@ import { PhysicsEngine } from "./PhysicsEngine";
 
 export class TeleopController {
   private isTeleopActive = false;
+  public isPollinatorLowered = false;
 
   private maxLinearVelocity = 3.5; // m/s
   private maxAngularVelocity = Math.PI * 2; // rad/s
@@ -25,6 +26,7 @@ export class TeleopController {
 
   public onLaunch?: (robotPose: Pose3d) => void;
   public onIntake?: (robotPose: Pose3d) => void;
+  public onPollinatorToggle?: (isLowered: boolean) => void;
 
   constructor() {
     this.setupKeyboardListeners();
@@ -78,6 +80,9 @@ export class TeleopController {
         if (event.code === "Enter" && this.isTeleopActive) {
           this.triggerIntake();
         }
+        if (event.code === "KeyP" && this.isTeleopActive) {
+          this.togglePollinator();
+        }
       }
 
       this.keysPressed.add(event.code);
@@ -99,6 +104,13 @@ export class TeleopController {
   private triggerIntake() {
     if (this.onIntake) {
       this.onIntake(this.lastRobotPose);
+    }
+  }
+
+  private togglePollinator() {
+    this.isPollinatorLowered = !this.isPollinatorLowered;
+    if (this.onPollinatorToggle) {
+      this.onPollinatorToggle(this.isPollinatorLowered);
     }
   }
 
