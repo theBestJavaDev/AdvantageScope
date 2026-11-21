@@ -13,7 +13,7 @@ export type AutoCheckRendererCommand = {
   result: AutoCheckResult | null;
   errorSources: string[];
   spinLabel: string;
-  /** The random match shown on the 3D field (missed shots as red balls), or null before the first check. */
+  /** The random match shown on the 3D field (misses as POLLEN with red trails), or null before the first check. */
   match?: { inCount: number; total: number; missed: number[] } | null;
 };
 
@@ -147,7 +147,9 @@ export default class AutoCheckRenderer implements TabRenderer {
     this.DIST.appendChild(bars);
 
     this.ERRORS.textContent =
-      "Error sources (from Shot Lab): " + (command.errorSources.length > 0 ? command.errorSources.join(" · ") : "none");
+      "Error sources (from Shot Lab): " +
+      (command.errorSources.length > 0 ? command.errorSources.join(" · ") : "none") +
+      ". Their sizes are estimates until you measure your robot (F1 → Make the numbers match your robot).";
 
     // One-line takeaway: where the shots cross the mouth on average and the speed change that centers them
     const crossing = r.shots.filter((s) => isFinite(s.mouthOffset));

@@ -169,9 +169,14 @@ export default class Field3dRendererImpl implements TabRenderer {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = mode === "cinematic";
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Cinematic: Brandon's tuning (ACES, brighter lights) looks right on macOS. On Windows the same
+    // settings wash the floor out white and turn red/blue orange/purple, so it gets no tone mapping
+    // and dimmer lights there.
+    const macLook = window.platform === "darwin";
     if (mode === "cinematic") {
-      this.renderer.toneMapping = THREE.NoToneMapping;
+      this.renderer.toneMapping = macLook ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
       this.renderer.toneMappingExposure = 1.15;
+      this.SPOT_LIGHT_INTENSITY_FTC = macLook ? 60 : 35;
     }
     this.scene = new THREE.Scene();
     if (mode === "cinematic") {
@@ -182,7 +187,7 @@ export default class Field3dRendererImpl implements TabRenderer {
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         const room = new RoomEnvironment();
         this.scene.environment = pmrem.fromScene(room, 0.03).texture;
-        this.scene.environmentIntensity = 0.35;
+        this.scene.environmentIntensity = macLook ? 0.55 : 0.35;
         room.dispose();
         pmrem.dispose();
       } catch (error) {

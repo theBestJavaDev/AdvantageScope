@@ -15,7 +15,8 @@
  * frame, rotate its poses into this one before comparing.
  */
 
-import { TargetMouth } from "./PhysicsEngine";
+import { Collider, TargetMouth } from "./PhysicsEngine";
+import { Vector3 } from "./vector";
 
 const IN = 0.0254;
 
@@ -142,6 +143,64 @@ const CELL_RIDGE_HEIGHT = 12.52 * IN;
 /** HIVEs are 25.5 in center to center (Fig 9-10); red on the red (left) side. */
 const HIVE_X = (25.5 / 2) * IN;
 
+const CELL_BACK_DISTANCE = 9.644 * IN;
+/** Tray wall thickness (polycarbonate, estimate). */
+const CELL_WALL = 0.25 * IN;
+
+/**
+ * The HIVE's solid parts, so a miss bounces off it instead of flying through: the tipped bar's two
+ * CELL trays (floor, roof, sides and inner back walls, open only at the mouths) and the A-frame
+ * (legs from the frame-base corners up to the axle, axle between the HIVEs). The roof is flat at the
+ * ridge height, and the frame tube sizes and axle path are estimates from the field drawings.
+ */
+function hiveColliders(pivotX: number, angle: number): Collider[] {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const pivot: Vector3 = [pivotX, 0, HIVE_PIVOT_HEIGHT];
+  const ex: Vector3 = [1, 0, 0];
+  const ey: Vector3 = [0, c, s];
+  const ez: Vector3 = [0, -s, c];
+  const box = (x: number, y: number, z: number, hx: number, hy: number, hz: number): Collider => ({
+    kind: "box",
+    center: [pivot[0] + x, y * c - z * s, pivot[2] + y * s + z * c],
+    axes: [ex, ey, ez],
+    half: [hx, hy, hz]
+  });
+  const midZ = (CELL_FLOOR_OFFSET + CELL_RIDGE_HEIGHT) / 2;
+  const halfZ = (CELL_RIDGE_HEIGHT - CELL_FLOOR_OFFSET) / 2;
+  const T = CELL_WALL;
+  return [
+    // Floor + roof + sides run the whole bar, mouth to mouth
+    box(0, 0, CELL_FLOOR_OFFSET - T / 2, CELL_HALF_WIDTH + T, CELL_MOUTH_DISTANCE, T / 2),
+    box(0, 0, CELL_RIDGE_HEIGHT + T / 2, CELL_HALF_WIDTH + T, CELL_MOUTH_DISTANCE, T / 2),
+    box(CELL_HALF_WIDTH + T / 2, 0, midZ, T / 2, CELL_MOUTH_DISTANCE, halfZ + T),
+    box(-CELL_HALF_WIDTH - T / 2, 0, midZ, T / 2, CELL_MOUTH_DISTANCE, halfZ + T),
+    // Back walls of the two CELLs (the middle of the bar is closed)
+    box(0, 0, midZ, CELL_HALF_WIDTH + T, CELL_BACK_DISTANCE, halfZ + T)
+  ];
+}
+
+/** The A-frame both HIVEs hang from: four legs and the axle outside the HIVEs (estimate). */
+function frameColliders(): Collider[] {
+  const tube = 0.75 * IN;
+  const top = HIVE_PIVOT_HEIGHT;
+  const out: Collider[] = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      out.push({ kind: "capsule", a: [sx * FRAME_HX, sy * FRAME_HY, 0], b: [sx * FRAME_HX, 0, top], radius: tube });
+    }
+  }
+  const gap = CELL_HALF_WIDTH + CELL_WALL + 0.5 * IN;
+  const axle = (x0: number, x1: number): Collider => ({
+    kind: "capsule",
+    a: [x0, 0, top],
+    b: [x1, 0, top],
+    radius: tube
+  });
+  out.push(axle(-FRAME_HX, -HIVE_X - gap), axle(-HIVE_X + gap, HIVE_X - gap), axle(HIVE_X + gap, FRAME_HX));
+  return out;
+}
+
 /** The up CELL's mouth in the sim field frame: faces outward along the tipped bar (and 30 deg up). */
 export function cellMouth(alliance: Alliance, hiveCell: HiveCell): TargetMouth {
   const pivotX = (alliance === "red" ? -1 : 1) * HIVE_X;
@@ -161,7 +220,8 @@ export function cellMouth(alliance: Alliance, hiveCell: HiveCell): TargetMouth {
     u: [1, 0, 0],
     v: [0, vy, vz],
     halfU: CELL_HALF_WIDTH,
-    halfV: (CELL_RIDGE_HEIGHT - CELL_FLOOR_OFFSET) / 2
+    halfV: (CELL_RIDGE_HEIGHT - CELL_FLOOR_OFFSET) / 2,
+    colliders: [...hiveColliders(pivotX, angle), ...frameColliders()]
   };
 }
 

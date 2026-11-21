@@ -31,6 +31,7 @@ import {
   mergeShotLabConfig,
   placeRobotForCell,
   runShotLab,
+  simulateNominal,
   solveShot
 } from "../../src/shared/physics/ShotLab";
 import { Random } from "../../src/shared/physics/vector";
@@ -255,7 +256,9 @@ function check(name: string, ok: boolean, info = "") {
   const energy = (v: number[], w: number[], z: number) => {
     const m = piece.mass;
     const I = piece.inertiaFactor * m * piece.radius * piece.radius;
-    return 0.5 * m * (v[0] ** 2 + v[1] ** 2 + v[2] ** 2) + 0.5 * I * (w[0] ** 2 + w[1] ** 2 + w[2] ** 2) + m * 9.80665 * z;
+    return (
+      0.5 * m * (v[0] ** 2 + v[1] ** 2 + v[2] ** 2) + 0.5 * I * (w[0] ** 2 + w[1] ** 2 + w[2] ** 2) + m * 9.80665 * z
+    );
   };
 
   // 1 m drop: first rebound height follows e^2 (restitution is defined at the drop-test speed)
@@ -267,7 +270,11 @@ function check(name: string, ok: boolean, info = "") {
     const afterBounce = r.samples.filter((x) => x.time > (r.landing?.time ?? 0));
     const apex = Math.max(...afterBounce.slice(0, 60).map((x) => x.position[2] - piece.radius));
     const expected = piece.floorRestitution ** 2;
-    check("1 m drop rebounds to e^2 of the height", Math.abs(apex - expected) < 0.04, `${apex.toFixed(3)} vs ${expected.toFixed(3)} m`);
+    check(
+      "1 m drop rebounds to e^2 of the height",
+      Math.abs(apex - expected) < 0.04,
+      `${apex.toFixed(3)} vs ${expected.toFixed(3)} m`
+    );
   }
 
   // Harder hits bounce proportionally less than soft ones
@@ -283,13 +290,20 @@ function check(name: string, ok: boolean, info = "") {
     };
     const soft = rebound(2);
     const hard = rebound(9);
-    check("hard impacts lose more energy than soft ones", soft > hard + 0.03, `e = ${soft.toFixed(3)} (2 m/s) vs ${hard.toFixed(3)} (9 m/s)`);
+    check(
+      "hard impacts lose more energy than soft ones",
+      soft > hard + 0.03,
+      `e = ${soft.toFixed(3)} (2 m/s) vs ${hard.toFixed(3)} (9 m/s)`
+    );
   }
 
   // Backspin ball landing moving forward checks up (loses forward speed); topspin kicks forward
   {
     const land = (spinY: number) => {
-      const r = engine.simulate(makeBallState([0, 0, 0.5], [3, 0, -3], [0, spinY, 0]), { duration: 0.5, timeStep: 0.0005 });
+      const r = engine.simulate(makeBallState([0, 0, 0.5], [3, 0, -3], [0, spinY, 0]), {
+        duration: 0.5,
+        timeStep: 0.0005
+      });
       const c = r.contacts.find((x) => x.surface === "floor");
       const after = r.samples.find((x) => c !== undefined && x.time > c.time + 0.01);
       return after === undefined ? NaN : after.velocity[0];
@@ -298,22 +312,42 @@ function check(name: string, ok: boolean, info = "") {
     const top = land(150);
     const none = land(0);
     const back = land(-150);
-    check("backspin checks, topspin kicks (post-bounce forward speed)", back < none && none < top, `${back.toFixed(2)} / ${none.toFixed(2)} / ${top.toFixed(2)} m/s`);
+    check(
+      "backspin checks, topspin kicks (post-bounce forward speed)",
+      back < none && none < top,
+      `${back.toFixed(2)} / ${none.toFixed(2)} / ${top.toFixed(2)} m/s`
+    );
   }
 
   // A sliding ball ends up rolling without slipping, and a rolling ball decays smoothly to rest
   {
-    const r = engine.simulate(makeBallState([0, 0, piece.radius], [3, 0, 0], [0, 0, 0]), { duration: 6, timeStep: 0.001 });
+    const r = engine.simulate(makeBallState([0, 0, piece.radius], [3, 0, 0], [0, 0, 0]), {
+      duration: 6,
+      timeStep: 0.001
+    });
     const mid = r.samples[Math.floor(r.samples.length * 0.1)];
-    const rolling = Math.abs(mid.velocity[0] - mid.angularVelocity[1] * piece.radius) < 0.15 * Math.abs(mid.velocity[0]) + 0.02;
+    const rolling =
+      Math.abs(mid.velocity[0] - mid.angularVelocity[1] * piece.radius) < 0.15 * Math.abs(mid.velocity[0]) + 0.02;
     const last = r.finalState;
-    check("sliding ball turns into rolling (v = w r)", rolling, `v ${mid.velocity[0].toFixed(2)} vs w r ${(mid.angularVelocity[1] * piece.radius).toFixed(2)}`);
-    check("rolling ball comes to rest", Math.hypot(last.velocity[0], last.velocity[1]) < 0.05, `${Math.hypot(last.velocity[0], last.velocity[1]).toFixed(3)} m/s at the end`);
+    check(
+      "sliding ball turns into rolling (v = w r)",
+      rolling,
+      `v ${mid.velocity[0].toFixed(2)} vs w r ${(mid.angularVelocity[1] * piece.radius).toFixed(2)}`
+    );
+    check(
+      "rolling ball comes to rest",
+      Math.hypot(last.velocity[0], last.velocity[1]) < 0.05,
+      `${Math.hypot(last.velocity[0], last.velocity[1]).toFixed(3)} m/s at the end`
+    );
   }
 
   // A ball spinning flat on the floor slows down from pivot friction
   {
-    const r = engine.simulate(makeBallState([0, 0, piece.radius], [0, 0, 0], [0, 0, 30]), { duration: 2, timeStep: 0.001, stopWhenAtRest: false });
+    const r = engine.simulate(makeBallState([0, 0, piece.radius], [0, 0, 0], [0, 0, 30]), {
+      duration: 2,
+      timeStep: 0.001,
+      stopWhenAtRest: false
+    });
     const w = r.finalState.angularVelocity[2];
     check("flat spin on the floor slows down", w < 29 && w >= 0, `${w.toFixed(1)} rad/s after 2 s`);
   }
@@ -321,8 +355,17 @@ function check(name: string, ok: boolean, info = "") {
   // Contacts never add energy
   {
     let worst = 0;
-    for (const [vx, vz, wy] of [[4, -5, 80], [-2, -8, -120], [6, 3, 0], [0, -9, 200]]) {
-      const r = engine.simulate(makeBallState([0, 0, 0.4], [vx, 0, vz], [0, wy, 0]), { duration: 3, timeStep: 0.0005, stopWhenAtRest: false });
+    for (const [vx, vz, wy] of [
+      [4, -5, 80],
+      [-2, -8, -120],
+      [6, 3, 0],
+      [0, -9, 200]
+    ]) {
+      const r = engine.simulate(makeBallState([0, 0, 0.4], [vx, 0, vz], [0, wy, 0]), {
+        duration: 3,
+        timeStep: 0.0005,
+        stopWhenAtRest: false
+      });
       const e0 = energy([vx, 0, vz], [0, wy, 0], 0.4);
       const s = r.finalState;
       worst = Math.max(worst, (energy(s.velocity, s.angularVelocity, s.position[2]) - e0) / e0);
@@ -342,6 +385,56 @@ function check(name: string, ok: boolean, info = "") {
     isFinite(tuned) && Math.abs(miss.range) < 0.005,
     `${tuned.toFixed(3)} m/s, ${(miss.range * 100).toFixed(2)} cm from the middle`
   );
+}
+
+// ---------------------------------------------------------------- HIVE is solid
+{
+  const engine = new PhysicsEngine({ ...DEFAULT_GAME_PIECE, radius: 1.4 * 0.0254 }, DEFAULT_ENVIRONMENT, FTC_FIELD);
+  const mouth = cellMouth("red", "rear");
+  const target = { name: "cell", min: mouth.center, max: mouth.center, requireDescending: false, mouth };
+  const opts = { duration: 2, timeStep: 0.0005, stopWhenAtRest: false };
+  check(
+    "every CELL mouth comes with the HIVE's solid parts",
+    (mouth.colliders?.length ?? 0) >= 10,
+    `${mouth.colliders?.length ?? 0} parts`
+  );
+
+  // Thrown flat at the side of the red HIVE's bar (from the field center toward -x): bounces back
+  {
+    const start: [number, number, number] = [0, 0, 43.95 * 0.0254 + 0.08];
+    const r = engine.simulate(makeBallState(start, [-4, 0, 1.5], [0, 0, 0]), opts, target);
+    const hiveHit = r.contacts.find((c) => c.surface === "hive");
+    const minX = Math.min(...r.samples.map((s) => s.position[0]));
+    check(
+      "a ball thrown at the side of a HIVE bounces off it",
+      hiveHit !== undefined && minX > mouth.center[0] && !r.target!.hit,
+      hiveHit ? `hit at x ${hiveHit.position[0].toFixed(2)} m, never past x ${minX.toFixed(2)} m` : "went through"
+    );
+  }
+
+  // Dropped onto the HIVE's roof: first contact is on top of the bar, not inside it
+  {
+    const r = engine.simulate(makeBallState([mouth.center[0], 0, 2.2], [0, 0, 0], [0, 0, 0]), opts, target);
+    const firstHive = r.contacts.find((c) => c.surface === "hive");
+    check(
+      "a ball dropped on a HIVE lands on its roof, not through it",
+      firstHive !== undefined && firstHive.position[2] > 55 * 0.0254,
+      firstHive ? `first contact ${(firstHive.position[2] / 0.0254).toFixed(1)} in up` : "fell through"
+    );
+  }
+
+  // A shot centered in the mouth still goes in with the HIVE solid
+  {
+    const scenario = buildScenario(defaultShotLabConfig());
+    scenario.shooter.exitSpeed = centeringExitSpeed(scenario, false);
+    const r = simulateNominal(scenario);
+    const hiveHits = r.contacts.filter((c) => c.surface === "hive" && c.time < (r.target?.time ?? Infinity)).length;
+    check(
+      "a centered shot still scores with the HIVE solid",
+      r.target?.hit === true && hiveHits === 0,
+      `${r.target?.hit ? "IN" : "MISS"}, ${hiveHits} HIVE touches before the mouth`
+    );
+  }
 }
 
 console.log("\n" + passes + " passed, " + failures + " failed");

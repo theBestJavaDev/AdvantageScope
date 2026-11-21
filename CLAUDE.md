@@ -124,3 +124,10 @@ SolversScope watches). Per-computer setup:
   (`src/main/electron/robotCad.ts`): the chosen .glb is copied into userAssets as a robot. "Don't ask again" is
   saved in the `skipRobotCadPrompt` pref.
 - **Physics checks:** `npm run test:sim` (`test/sim/simTests.ts`). Run it after changing anything in `src/shared/physics/`.
+- **Solid HIVE:** `cellMouth` attaches `colliders` (the tipped bar's trays, open only at the mouths, plus the A-frame legs
+  and axle; `hiveColliders` / `frameColliders` in `GamePresets.ts`). `PhysicsEngine.simulate` bounces pieces off the
+  target's colliders (contact surface `"hive"`). The aim solvers (`measureMiss`) fly without them on purpose. Only the
+  targeted HIVE's trays are solid; the frame tube sizes are estimates.
+- **Cinematic 3D:** macOS keeps Brandon's tuning (ACES, FTC spot lights 60, environment 0.55); Windows/other get no tone
+  mapping, 35 and 0.35 (ACES washed the floor white and shifted red/blue there). `Field3dRendererImpl` constructor.
+- **Startup:** only the main window opens. Dev tools only with `SOLVERS_DEVTOOLS=1`; satellites aren't restored.

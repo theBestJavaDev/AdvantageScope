@@ -78,6 +78,12 @@ Click the **3D Field** tab.
 What you're seeing: our robot (the CAD model), the POLLEN balls, the HIVEs tipping, and a **yellow arc** for the last
 shot.
 
+**Make it look nicer (or run faster):** under the 3D field, **3D Quality Mode** has three choices:
+
+- **Cinematic:** shadows, reflections and better lighting. Use it on a good computer.
+- **Standard:** smooth and fast. Use it if Cinematic stutters.
+- **Low Power:** for old laptops or when you're on battery.
+
 <a id="compare"></a>
 
 ## Compare runs side by side
@@ -138,7 +144,25 @@ match** to roll another one; each is different, and over many rolls they average
 
 The gold box above the table sums it up in one sentence. The error settings it uses come from the **Shot Lab** tab.
 
+The HIVE is **solid**: a ball that clips a CELL's lip or hits the frame bounces off, like on a real field. A shot that
+crosses the mouth very low can miss because the ball hits the bottom lip on the way in.
+
 > Treat the Tune numbers as a direction ("we're aiming low, aim higher"), then confirm on the real robot.
+
+<a id="measure"></a>
+
+### Make the numbers match your robot
+
+Out of the box, the error sizes (how much the flywheel speed, hood and turret wander from shot to shot) are
+**estimates**. To make Auto Check predict _your_ robot:
+
+1. On the real robot, shoot **20 or more** times from the same spot with the same settings.
+2. Write down the **flywheel speed** for each shot (from telemetry), and watch where each ball crosses the CELL's mouth.
+3. Open **Shot Lab** → **Error sources** and set:
+   - **Exit speed** to how far the flywheel speed usually wanders from shot to shot,
+   - **Hood angle** and **Turret / aim** to how far those angles usually wander.
+4. Press **Run**. If Shot Lab's hit rate is close to what you saw on the robot, Auto Check's numbers are now about
+   your robot.
 
 <a id="shotlab"></a>
 

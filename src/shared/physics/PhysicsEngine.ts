@@ -113,6 +113,57 @@ export interface TargetMouth {
   v: Vector3;
   halfU: number;
   halfV: number;
+  /** Solid parts around the opening (the HIVE's trays and frame) that a piece bounces off. */
+  colliders?: Collider[];
+}
+
+/** A solid part a game piece can bounce off: an oriented box or a capsule (a round tube). */
+export type Collider =
+  | { kind: "box"; center: Vector3; axes: [Vector3, Vector3, Vector3]; half: Vector3 }
+  | { kind: "capsule"; a: Vector3; b: Vector3; radius: number };
+
+/**
+ * Closest approach of a point to a collider: the outward normal at the closest surface point and the
+ * signed distance from the point to the surface (negative inside).
+ */
+export function colliderContact(p: Vector3, c: Collider): { normal: Vector3; distance: number } | null {
+  if (c.kind === "capsule") {
+    const ab = sub(c.b, c.a);
+    const t = Math.max(0, Math.min(1, dot(sub(p, c.a), ab) / Math.max(dot(ab, ab), 1e-12)));
+    const d = sub(p, addScaled(c.a, ab, t));
+    const len = length(d);
+    if (len < 1e-9) return null;
+    return { normal: scale(d, 1 / len), distance: len - c.radius };
+  }
+  const d = sub(p, c.center);
+  const local = c.axes.map((axis) => dot(d, axis));
+  const clamped = local.map((x, i) => Math.max(-c.half[i], Math.min(c.half[i], x)));
+  const out = local.map((x, i) => x - clamped[i]);
+  const outLen = Math.hypot(out[0], out[1], out[2]);
+  if (outLen > 1e-9) {
+    let n: Vector3 = [0, 0, 0];
+    for (let i = 0; i < 3; i++) n = addScaled(n, c.axes[i], out[i] / outLen);
+    return { normal: n, distance: outLen };
+  }
+  // Inside: push out through the nearest face
+  let best = 0;
+  let bestDepth = Infinity;
+  for (let i = 0; i < 3; i++) {
+    const depth = c.half[i] - Math.abs(local[i]);
+    if (depth < bestDepth) {
+      bestDepth = depth;
+      best = i;
+    }
+  }
+  return { normal: scale(c.axes[best], local[best] >= 0 ? 1 : -1), distance: -bestDepth };
+}
+
+/** Radius of a sphere around the collider (for skipping far-away parts quickly). */
+function colliderBound(c: Collider): { center: Vector3; radius: number } {
+  if (c.kind === "capsule") {
+    return { center: scale(add(c.a, c.b), 0.5), radius: length(sub(c.b, c.a)) / 2 + c.radius };
+  }
+  return { center: c.center, radius: length(c.half) };
 }
 
 /** Distance from p to a mouth rectangle (0 on it). */
@@ -234,7 +285,7 @@ export interface BallSample {
   magnusForce: number;
 }
 
-export type ContactSurface = "floor" | "wall+x" | "wall-x" | "wall+y" | "wall-y";
+export type ContactSurface = "floor" | "wall+x" | "wall-x" | "wall+y" | "wall-y" | "hive";
 
 export interface ContactEvent {
   time: number;
@@ -294,6 +345,14 @@ export class PhysicsEngine {
     public environment: EnvironmentProperties = DEFAULT_ENVIRONMENT,
     public field: FieldGeometry = FTC_FIELD
   ) {}
+
+  /** Solid parts for the current simulation (from the target's mouth), with bounding spheres. */
+  private colliders: { collider: Collider; center: Vector3; radius: number }[] = [];
+
+  /** Sets the solid parts pieces bounce off (simulate() takes them from the target's mouth). */
+  setColliders(colliders: Collider[]) {
+    this.colliders = colliders.map((collider) => ({ collider, ...colliderBound(collider) }));
+  }
 
   private get area(): number {
     return Math.PI * this.piece.radius * this.piece.radius;
@@ -396,6 +455,19 @@ export class PhysicsEngine {
       );
     }
 
+    // HIVE trays and frame (polycarbonate / aluminum: bounce like the walls)
+    for (const { collider, center, radius } of this.colliders) {
+      if (length(sub(state.position, center)) > radius + r) continue;
+      const contact = colliderContact(state.position, collider);
+      if (contact === null || contact.distance >= r) continue;
+      planes.push({
+        surface: "hive",
+        normal: contact.normal,
+        distance: contact.distance,
+        restitution: this.piece.wallRestitution
+      });
+    }
+
     const betaT = this.piece.tangentialRestitution ?? 0.2;
     const softening = this.piece.restitutionSoftening ?? 0.03;
     const staticRatio = this.piece.staticFrictionRatio ?? 1.2;
@@ -405,7 +477,7 @@ export class PhysicsEngine {
       const penetration = r - plane.distance;
       if (penetration <= 0) continue;
       // Ignore walls the piece is already fully past (it left the field over the top)
-      if (plane.surface !== "floor" && plane.distance < -r) continue;
+      if (plane.surface.startsWith("wall") && plane.distance < -r) continue;
 
       const n = plane.normal;
       state.position = addScaled(state.position, n, penetration);
@@ -491,6 +563,7 @@ export class PhysicsEngine {
   ): TrajectoryResult {
     const opts = { ...DEFAULT_SIMULATION_OPTIONS, ...options };
     const dt = opts.timeStep;
+    this.setColliders(target?.mouth?.colliders ?? []);
     const r = this.piece.radius;
 
     let state: BallState = {
